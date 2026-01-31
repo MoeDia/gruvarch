@@ -9,12 +9,12 @@ if [ ! -f "./classroom.jpg" ]; then
 fi
 
 # ==============================================================================
-# CHUNK 1: CORE PACKAGES (Thunar & Utils)
+# CHUNK 1: CORE PACKAGES & FIXES
 # ==============================================================================
 echo ":: [1/7] Installing Core System..."
 
-# Removed: pcmanfm-qt, lxsession, swaylock-effects
-# Added: thunar, gvfs (drives), udiskie (automount), imagemagick (blur tool)
+# Added: python-gobject (Fixes Power Error), libnotify (Fixes Notifications), 
+# xfce4-settings (Fixes Thunar Theme), swaylock-effects-git (Fixes Lock)
 PACKAGES="sway swaybg foot fuzzel mako \
 wl-clipboard grim slurp imv \
 thunar thunar-volman thunar-archive-plugin gvfs gvfs-mtp ntfs-3g udiskie \
@@ -22,7 +22,8 @@ pipewire pipewire-pulse wireplumber pamixer \
 polkit-gnome xcursor-vanilla-dmz \
 ttf-jetbrains-mono-nerd ttf-font-awesome inter-font \
 fish eza fzf starship mpv ffmpeg zed power-profiles-daemon \
-unzip wf-recorder noto-fonts pipewire-jack python-gobject glib2 wob imagemagick"
+unzip wf-recorder noto-fonts pipewire-jack python-gobject glib2 wob imagemagick \
+libnotify xfce4-settings"
 
 sudo pacman -S --needed --noconfirm $PACKAGES
 
@@ -31,7 +32,7 @@ if ! command -v reflector &> /dev/null; then sudo pacman -S --noconfirm reflecto
 sudo reflector --latest 5 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
 # ==============================================================================
-# CHUNK 2: AUR (Gtklock & Extras)
+# CHUNK 2: AUR (Theming & Lock)
 # ==============================================================================
 echo ":: [2/7] Installing AUR Essentials..."
 if ! command -v yay &> /dev/null; then
@@ -39,62 +40,25 @@ if ! command -v yay &> /dev/null; then
     git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si --noconfirm && cd .. && rm -rf yay-bin
 fi
 
-# gtklock: The alternative lock screen
-# fastfetch: Terminal info
-yay -S --noconfirm librewolf-bin gruvbox-dark-gtk gtklock fastfetch
+# swaylock-effects-git: Required for the "Invisible Ring" blur effect
+yay -S --noconfirm librewolf-bin gruvbox-dark-gtk swaylock-effects-git fastfetch
 
 # ==============================================================================
-# CHUNK 3: VISUALS (Wallpaper & Lock Prep)
+# CHUNK 3: VISUALS
 # ==============================================================================
 echo ":: [3/7] Preparing Visuals..."
 mkdir -p ~/Pictures/Wallpapers
-
-# 1. Main Wallpaper
 cp "./classroom.jpg" ~/Pictures/Wallpapers/classroom.jpg
 
-# 2. Generate "Fake" Blurred Lockscreen Background
-# This is the sure-fire way to get blur without crashing.
-echo ":: Generating blurred lockscreen image..."
-convert ~/Pictures/Wallpapers/classroom.jpg -blur 0x16 ~/Pictures/Wallpapers/lock_blurred.jpg
-
 # ==============================================================================
-# CHUNK 4: CONFIGURATION (Gtklock & Thunar)
+# CHUNK 4: CONFIGURATION (Thunar & GTK)
 # ==============================================================================
 echo ":: [4/7] Configuring Apps..."
 
-# --- Gtklock Config (The "Box" Look) ---
-mkdir -p ~/.config/gtklock
-cat <<EOF > ~/.config/gtklock/config.ini
-[main]
-gtk-theme=Gruvbox-Dark
-style=~/.config/gtklock/style.css
-EOF
+# 1. Force GTK Theme (Thunar Fix)
+mkdir -p ~/.config/gtk-3.0 ~/.config/gtk-4.0 ~/.config/xfce4/xfconf/xfce-perchannel-xml
 
-cat <<EOF > ~/.config/gtklock/style.css
-window {
-    background-image: url("$(echo ~)/Pictures/Wallpapers/lock_blurred.jpg");
-    background-size: cover;
-    background-repeat: no-repeat;
-}
-
-#input-label {
-    /* Hidden, we just want the box */
-    opacity: 0;
-}
-
-#input {
-    background-color: #282828;
-    color: #ebdbb2;
-    border: 2px solid #d79921;
-    border-radius: 0px;
-    padding: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.5);
-    margin-top: 200px; /* Push it down a bit */
-}
-EOF
-
-# --- GTK Settings (Forces Thunar Theme) ---
-mkdir -p ~/.config/gtk-3.0 ~/.config/gtk-4.0
+# Write GTK3 settings
 cat <<EOF > ~/.config/gtk-3.0/settings.ini
 [Settings]
 gtk-theme-name=Gruvbox-Dark
@@ -105,8 +69,20 @@ gtk-application-prefer-dark-theme=1
 EOF
 cp ~/.config/gtk-3.0/settings.ini ~/.config/gtk-4.0/settings.ini
 
+# 2. Configure XFCE Settings (Thunar Backup Fix)
+# This forces XFCE apps (Thunar) to read the property correctly
+cat <<EOF > ~/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xsettings" version="1.0">
+  <property name="Net" type="empty">
+    <property name="ThemeName" type="string" value="Gruvbox-Dark"/>
+    <property name="IconThemeName" type="string" value="Papirus-Dark"/>
+  </property>
+</channel>
+EOF
+
 # ==============================================================================
-# CHUNK 5: SWAY CONFIGURATION
+# CHUNK 5: SWAY CONFIGURATION (Fixed Keys & Mako)
 # ==============================================================================
 echo ":: [5/7] Writing Sway Config..."
 mkdir -p ~/.config/sway
@@ -131,12 +107,11 @@ client.focused          #d79921 #282828 #ebdbb2 #d79921   #d79921
 client.focused_inactive #3c3836 #3c3836 #a89984 #3c3836   #3c3836
 client.unfocused        #3c3836 #3c3836 #a89984 #3c3836   #3c3836
 
-# Bar (Clean - No Recording Indicator)
+# Bar (Clean)
 bar {
     position top
     font pango:JetBrainsMono Nerd Font Bold 10
     status_command while date +'%I:%M %p | %d-%m-%Y'; do sleep 1; done
-
     colors {
         statusline #ebdbb2
         background #282828
@@ -161,25 +136,46 @@ exec mkfifo \$WOBSOCK && tail -f \$WOBSOCK | wob
 bindsym \$mod+equal exec pamixer -i 5 && pamixer --get-volume > \$WOBSOCK
 bindsym \$mod+minus exec pamixer -d 5 && pamixer --get-volume > \$WOBSOCK
 
-# --- Keybindings ---
+# --- Keybindings (FIXED) ---
 bindsym \$mod+Return exec \$term
 bindsym \$mod+Shift+q kill
 bindsym \$mod+d exec \$menu
 bindsym \$mod+Shift+c reload
 bindsym \$mod+Shift+e exec swaynag -t warning -m 'Exit Sway?' -B 'Yes' 'swaymsg exit'
 
-# Apps (Thunar & Zed)
+# Apps (Fixed Enter key error)
 bindsym \$mod+b exec librewolf
 bindsym \$mod+c exec zed --disable-gpu
 bindsym \$mod+Shift+Return exec thunar
 
-# Lock Screen (Gtklock)
-bindsym \$mod+Escape exec gtklock
+# Lock Screen (The "Invisible Ring" Box Look)
+# This removes the ugly circle by making it transparent
+bindsym \$mod+Escape exec swaylock \\
+    --screenshots \\
+    --clock \\
+    --indicator \\
+    --indicator-radius 100 \\
+    --indicator-thickness 7 \\
+    --effect-blur 7x5 \\
+    --effect-vignette 0.5:0.5 \\
+    --ring-color 00000000 \\
+    --inside-color 00000000 \\
+    --key-hl-color d79921 \\
+    --text-color ebdbb2 \\
+    --line-color 00000000 \\
+    --separator-color 00000000 \\
+    --fade-in 0.2
 
 # Screenshots & Recording
 bindsym \$mod+p exec grim ~/Pictures/shot_\$(date +%s).png
 bindsym \$mod+Shift+s exec grim -g "\$(slurp)" ~/Pictures/shot_\$(date +%s).png
 bindsym \$mod+Shift+r exec ~/.local/bin/record-screen.sh
+
+# Navigation
+bindsym \$mod+h focus left
+bindsym \$mod+j focus down
+bindsym \$mod+k focus up
+bindsym \$mod+l focus right
 
 # Workspaces
 bindsym \$mod+1 workspace 1
@@ -193,17 +189,19 @@ bindsym \$mod+Shift+3 move container to workspace 3
 bindsym \$mod+Shift+4 move container to workspace 4
 bindsym \$mod+Shift+5 move container to workspace 5
 
-# Autostart
+# Autostart (Essential Fixes)
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
-exec udiskie --tray # Auto-mounts USBs
+exec udiskie --tray
+exec mako  # Starts Notification Daemon
+exec xfsettingsd # Starts XFCE Theme Daemon for Thunar
 EOF
 
 # ==============================================================================
-# CHUNK 6: SHELL & EXTRAS
+# CHUNK 6: EXTRAS & SERVICES
 # ==============================================================================
-echo ":: [6/7] Finalizing Shell..."
+echo ":: [6/7] Finalizing..."
 
-# Fish Config (Test Notification Alias)
+# Fish Config
 cat <<EOF > ~/.config/fish/config.fish
 if status is-interactive
     set fish_greeting
@@ -222,20 +220,18 @@ set -gx QT_SCALE_FACTOR 2
 set -gx XCURSOR_SIZE 48
 EOF
 
-# Wob Config
-mkdir -p ~/.config/wob
-cat <<EOF > ~/.config/wob/wob.ini
-timeout = 1000
-max = 100
-width = 400
-height = 40
-border_size = 2
-bar_color = d79921
-border_color = 282828
-background_color = 282828
+# Mako Config (Gruvbox)
+mkdir -p ~/.config/mako
+cat <<EOF > ~/.config/mako/config
+font=JetBrainsMono Nerd Font 10
+background-color=#282828
+text-color=#ebdbb2
+border-color=#d79921
+border-size=2
+default-timeout=5000
 EOF
 
-# Recording Script (No Bar Update)
+# Recording Script
 mkdir -p ~/.local/bin
 cat <<EOF > ~/.local/bin/record-screen.sh
 #!/bin/bash
@@ -243,7 +239,7 @@ PIDFILE="/tmp/recording.pid"
 if [ -f "\$PIDFILE" ]; then
     kill -SIGINT \$(cat "\$PIDFILE")
     rm "\$PIDFILE"
-    notify-send "Recording" "Stopped."
+    notify-send "Recording" "Stopped. Saved to Videos."
 else
     mkdir -p ~/Videos
     wf-recorder -f ~/Videos/recording_\$(date +%s).mp4 &
