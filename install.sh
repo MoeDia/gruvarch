@@ -4,7 +4,6 @@
 echo ":: [1/5] Installing Official Packages..."
 
 # Core Sway, Tools, Audio, Fonts, Shell, Editor (Zed), Media (MPV+Codecs)
-# Note: 'zed' is in official repos now, cleaner than curl script.
 PACKAGES="sway swaybg swayidle swaylock foot fuzzel mako \
 wl-clipboard grim slurp imv nnn \
 pipewire pipewire-pulse wireplumber pamixer \
@@ -20,7 +19,6 @@ sudo pacman -S --needed --noconfirm $PACKAGES
 # --- 2. AUR Installation (LibreWolf) ---
 echo ":: [2/5] Setting up AUR for LibreWolf..."
 
-# Check if yay is installed, if not, install it
 if ! command -v yay &> /dev/null; then
     echo ":: Installing yay (AUR Helper)..."
     sudo pacman -S --needed --noconfirm base-devel git
@@ -31,7 +29,6 @@ if ! command -v yay &> /dev/null; then
     rm -rf yay-bin
 fi
 
-# Install LibreWolf Binary (Fast install)
 echo ":: Installing LibreWolf..."
 yay -S --noconfirm librewolf-bin
 
@@ -39,21 +36,26 @@ yay -S --noconfirm librewolf-bin
 echo ":: [3/5] Creating Config Directories..."
 mkdir -p ~/.config/{sway,foot,fuzzel,fish}
 
-# --- 4. Configuration Files (Gruvbox Everywhere) ---
+# --- 4. Configuration Files (Gruvbox + 4K Optimized) ---
 
-# --- Fish Config ---
+# --- Fish Config (With 4K Env Vars) ---
 cat <<EOF > ~/.config/fish/config.fish
 if status is-interactive
     set fish_greeting
-
+    
     # Aliases
     alias ls='eza -al --icons --group-directories-first'
     alias ll='eza -l --icons --group-directories-first'
-    alias vim='zed'
+    alias vim='zed' 
 
     # Starship
     starship init fish | source
 end
+
+# 4K / HiDPI Environment Variables
+set -gx GDK_SCALE 2
+set -gx QT_SCALE_FACTOR 2
+set -gx XCURSOR_SIZE 48
 EOF
 
 # --- Starship (Pure Preset) ---
@@ -129,7 +131,7 @@ selection-text=282828ff
 border=d79921ff
 EOF
 
-# --- Sway Config (Default Bar + Gruvbox) ---
+# --- Sway Config (4K Scaled + Gruvbox) ---
 cat <<EOF > ~/.config/sway/config
 # --- Variables ---
 set \$mod Mod4
@@ -148,20 +150,22 @@ client.focused_inactive #3c3836 #3c3836 #a89984 #3c3836   #3c3836
 client.unfocused        #3c3836 #3c3836 #a89984 #3c3836   #3c3836
 client.urgent           #cc241d #cc241d #ebdbb2 #cc241d   #cc241d
 
+# --- 4K Monitor Scaling ---
+# Scale factor 2 is standard for 4K (3840x2160 -> 1920x1080 logical)
+output * scale 2
+output * bg #282828 solid_color
+
 # --- Input (Real Hardware) ---
 input * {
     xkb_layout "us"
-    # Standard typing speed
     repeat_delay 300
     repeat_rate 50
-    # Enable "Tap to Click" for touchpads
     dwindle:enabled enable
     tap enabled
 }
 
-# --- Output ---
-# Sets background color. Use 'swaybg' for image wallpapers later.
-output * bg #282828 solid_color
+# --- Cursor (Large for 4K) ---
+seat seat0 xcursor_theme Vanilla-DMZ 48
 
 # --- Default Bar (Gruvbox Customized) ---
 bar {
@@ -226,5 +230,5 @@ chsh -s /usr/bin/fish
 
 echo ":: ---------------------------------------------------"
 echo ":: INSTALLATION COMPLETE."
-echo ":: Type 'sway' to launch your new environment."
+echo ":: Type 'sway' to launch your 4K Optimized environment."
 echo ":: ---------------------------------------------------"
