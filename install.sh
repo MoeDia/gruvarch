@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# PRE-FLIGHT CHECK
+# PRE-FLIGHT
 # ==============================================================================
 if [ ! -f "./classroom.jpg" ]; then
     echo ":: ERROR: 'classroom.jpg' missing. Place it next to this script."
@@ -9,140 +9,79 @@ if [ ! -f "./classroom.jpg" ]; then
 fi
 
 # ==============================================================================
-# CHUNK 1: CORE PACKAGES (Fixed for VM & Theming)
+# CHUNK 1: CORE PACKAGES (Lightweight)
 # ==============================================================================
-echo ":: [1/7] Installing Dependencies..."
+echo ":: [1/6] Installing Core System..."
 
-# Added: vulkan-swrast (Fixes Zed in VM), chafa (Images in terminal), 
-# qt5ct/qt6ct (Fixes PCManFM theme), wob (Gruvbox volume bar)
+# Added: fastfetch, qt5-styleplugins (AUR later) for sure-fire theming
 PACKAGES="sway swaybg foot fuzzel mako \
 wl-clipboard grim slurp imv pcmanfm-qt \
 pipewire pipewire-pulse wireplumber pamixer \
 lxsession xcursor-vanilla-dmz \
-inter-font ttf-jetbrains-mono-nerd ttf-font-awesome \
+ttf-jetbrains-mono-nerd ttf-font-awesome inter-font \
 fish eza fzf starship mpv ffmpeg zed power-profiles-daemon \
-unzip wf-recorder noto-fonts pipewire-jack python-gobject glib2 \
-wob qt5ct qt6ct kvantum vulkan-swrast chafa reflector"
+unzip wf-recorder noto-fonts pipewire-jack python-gobject glib2 wob"
 
 sudo pacman -S --needed --noconfirm $PACKAGES
 
-# Optimize Mirrors
+# Optimize Mirrors (Crucial for speed)
+if ! command -v reflector &> /dev/null; then sudo pacman -S --noconfirm reflector; fi
 sudo reflector --latest 5 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
 # ==============================================================================
-# CHUNK 2: AUR (Swaylock-Effects & Themes)
+# CHUNK 2: AUR (Theming & Lock)
 # ==============================================================================
-echo ":: [2/7] Installing AUR Packages..."
+echo ":: [2/6] Installing AUR Essentials..."
 if ! command -v yay &> /dev/null; then
     sudo pacman -S --needed --noconfirm base-devel git
     git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si --noconfirm && cd .. && rm -rf yay-bin
 fi
 
-# swaylock-effects-git is REQUIRED for blur/screenshots
-yay -S --noconfirm librewolf-bin gruvbox-dark-gtk swaylock-effects-git
+# qt5-styleplugins: The magic package that makes Qt apps look like GTK
+# swaylock-effects-git: Required for Blur
+yay -S --noconfirm librewolf-bin gruvbox-dark-gtk swaylock-effects-git qt5-styleplugins fastfetch
 
 # ==============================================================================
-# CHUNK 3: SYSTEM-WIDE THEMING (The Real Fix)
+# CHUNK 3: SURE-FIRE THEMING (GTK + Qt Sync)
 # ==============================================================================
-echo ":: [3/7] Forcing Deep Theming..."
+echo ":: [3/6] Forcing Deep Dark Theme..."
 
-# 1. Force GTK Settings (Fixes LibreWolf)
+# 1. Force GTK Settings (The Source of Truth)
 mkdir -p ~/.config/gtk-3.0 ~/.config/gtk-4.0
 cat <<EOF > ~/.config/gtk-3.0/settings.ini
 [Settings]
 gtk-theme-name=Gruvbox-Dark
 gtk-icon-theme-name=Papirus-Dark
-gtk-font-name=Inter 10
+gtk-font-name=JetBrainsMono Nerd Font 10
 gtk-cursor-theme-name=Vanilla-DMZ
 gtk-application-prefer-dark-theme=1
 EOF
 cp ~/.config/gtk-3.0/settings.ini ~/.config/gtk-4.0/settings.ini
 
-# 2. Force Qt Settings (Fixes PCManFM)
-# We set the environment variable later in Fish config
-mkdir -p ~/.config/qt5ct
-echo "[Appearance]
-style=gtk2
-icon_theme=Papirus-Dark
-standard_dialogs=default" > ~/.config/qt5ct/qt5ct.conf
+# 2. Force Qt to read GTK settings (The Sure-Fire Fix for PCManFM)
+# We do not use qt5ct anymore. We use gtk2 platform theme.
+# The variable is set in the Fish config below.
 
 # ==============================================================================
-# CHUNK 4: CUSTOM VISUALS (Wob & Wallpaper)
+# CHUNK 4: CONFIGURATION (Sway & Bar)
 # ==============================================================================
-echo ":: [4/7] Setting Visuals..."
+echo ":: [4/6] Configuring Sway..."
+mkdir -p ~/.config/sway ~/.config/swaylock
 
 # Wallpaper
 mkdir -p ~/Pictures/Wallpapers
 cp "./classroom.jpg" ~/Pictures/Wallpapers/classroom.jpg
-if [ -f "./logo.png" ]; then cp "./logo.png" ~/Pictures/Wallpapers/logo.png; fi
-if [ -f "./logo.jpg" ]; then cp "./logo.jpg" ~/Pictures/Wallpapers/logo.jpg; fi
 
-# Wob (Volume Bar) - Gruvbox Theme
-mkdir -p ~/.config/wob
-cat <<EOF > ~/.config/wob/wob.ini
-timeout = 1000
-max = 100
-width = 400
-height = 40
-border_size = 2
-bar_color = d79921
-border_color = 282828
-background_color = 282828
-overflow_bar_color = cc241d
-overflow_background_color = 282828
-EOF
-
-# ==============================================================================
-# CHUNK 5: HELPER SCRIPTS (Recording & Lock)
-# ==============================================================================
-mkdir -p ~/.local/bin
-
-# Recording Script (Updates status for Bar)
-cat <<EOF > ~/.local/bin/record-screen.sh
-#!/bin/bash
-PIDFILE="/tmp/recording.pid"
-if [ -f "\$PIDFILE" ]; then
-    kill -SIGINT \$(cat "\$PIDFILE")
-    rm "\$PIDFILE"
-    pkill -RTMIN+1 swaybar # Refresh bar immediately
-else
-    mkdir -p ~/Videos
-    TIMESTAMP=\$(date +%Y-%m-%d_%H-%M-%S)
-    wf-recorder -f ~/Videos/recording_\$TIMESTAMP.mp4 &
-    echo \$! > "\$PIDFILE"
-    pkill -RTMIN+1 swaybar
-fi
-EOF
-chmod +x ~/.local/bin/record-screen.sh
-
-# Audio Selector
-cat <<EOF > ~/.local/bin/audio-selector.sh
-#!/bin/bash
-sink=\$(pactl list short sinks | cut -f 2 | fuzzel --dmenu --prompt="Audio Output: " --lines=5 --width=50)
-if [ -n "\$sink" ]; then
-    pactl set-default-sink "\$sink"
-    pactl list short sink-inputs | cut -f 1 | xargs -I {} pactl move-sink-input {} "\$sink"
-fi
-EOF
-chmod +x ~/.local/bin/audio-selector.sh
-
-# ==============================================================================
-# CHUNK 6: SWAY CONFIGURATION (Fixed Lock & Recording)
-# ==============================================================================
-echo ":: [5/7] Writing Sway Config..."
-mkdir -p ~/.config/sway
-
+# --- Sway Config ---
 cat <<EOF > ~/.config/sway/config
-# --- Variables ---
+# Variables
 set \$mod Mod4
 set \$term foot
 set \$menu fuzzel
 
-# --- Visuals ---
-font pango:Inter 10
+# Visuals (JetBrains Font)
+font pango:JetBrainsMono Nerd Font 10
 default_border pixel 2
-gaps inner 5
-gaps outer 0
 output * scale 2
 output * bg ~/Pictures/Wallpapers/classroom.jpg fill
 
@@ -154,10 +93,12 @@ client.focused          #d79921 #282828 #ebdbb2 #d79921   #d79921
 client.focused_inactive #3c3836 #3c3836 #a89984 #3c3836   #3c3836
 client.unfocused        #3c3836 #3c3836 #a89984 #3c3836   #3c3836
 
-# --- Bar with Recording Indicator ---
+# Bar (JetBrains Font + Clean)
 bar {
     position top
-    # Check for recording PID file. If exists, show red [REC].
+    font pango:JetBrainsMono Nerd Font Bold 10
+    
+    # Recording Indicator Logic
     status_command while true; do \
         if [ -f /tmp/recording.pid ]; then \
             echo "🔴 REC | \$(date +'%I:%M %p')"; \
@@ -185,12 +126,12 @@ input * {
 }
 seat seat0 xcursor_theme Vanilla-DMZ 48
 
-# --- Volume (Using WOB) ---
+# --- Volume (Wob Only) ---
 set \$WOBSOCK \$XDG_RUNTIME_DIR/wob.sock
 exec mkfifo \$WOBSOCK && tail -f \$WOBSOCK | wob
 bindsym \$mod+equal exec pamixer -i 5 && pamixer --get-volume > \$WOBSOCK
 bindsym \$mod+minus exec pamixer -d 5 && pamixer --get-volume > \$WOBSOCK
-bindsym \$mod+0 exec pamixer -t && (pamixer --get-mute && echo 0 || pamixer --get-volume) > \$WOBSOCK
+# Removed Super+0 mute binding
 
 # --- Keybindings ---
 bindsym \$mod+Return exec \$term
@@ -201,34 +142,30 @@ bindsym \$mod+Shift+e exec swaynag -t warning -m 'Exit Sway?' -B 'Yes' 'swaymsg 
 
 # Apps
 bindsym \$mod+b exec librewolf
-# Force Zed to use software rendering to prevent VM crash
 bindsym \$mod+c exec zed --disable-gpu
 bindsym \$mod+Shift+Return exec pcmanfm-qt
 
-# Audio Selector
-bindsym \$mod+a exec ~/.local/bin/audio-selector.sh
-
-# Screenshots (Full Res) & Recording
-bindsym \$mod+p exec grim ~/Pictures/shot_\$(date +%s).png
-bindsym \$mod+Shift+s exec grim -g "\$(slurp)" ~/Pictures/shot_\$(date +%s).png
-bindsym \$mod+Shift+r exec ~/.local/bin/record-screen.sh
-
-# BLURRED Lock Screen (Gruvbox Box Style)
+# Lock Screen (Omarchy Style - Blurred, Minimal)
 bindsym \$mod+Escape exec swaylock \
     --screenshots \
     --clock \
     --indicator \
-    --indicator-radius 100 \
-    --indicator-thickness 7 \
-    --effect-blur 7x5 \
+    --indicator-radius 120 \
+    --indicator-thickness 10 \
+    --effect-blur 10x5 \
     --effect-vignette 0.5:0.5 \
-    --ring-color d79921 \
-    --key-hl-color b8bb26 \
+    --ring-color 282828 \
+    --key-hl-color d79921 \
     --text-color ebdbb2 \
-    --inside-color 282828ff \
     --line-color 00000000 \
-    --ring-clear-color cc241d \
-    --inside-clear-color 282828
+    --inside-color 00000088 \
+    --separator-color 00000000 \
+    --fade-in 0.2
+
+# Screenshots & Recording
+bindsym \$mod+p exec grim ~/Pictures/shot_\$(date +%s).png
+bindsym \$mod+Shift+s exec grim -g "\$(slurp)" ~/Pictures/shot_\$(date +%s).png
+bindsym \$mod+Shift+r exec ~/.local/bin/record-screen.sh
 
 # Workspaces
 bindsym \$mod+1 workspace 1
@@ -247,54 +184,65 @@ exec /usr/lib/lxpolkit/lxpolkit
 EOF
 
 # ==============================================================================
-# CHUNK 7: TERMINAL & SHELL (Custom Image)
+# CHUNK 5: SHELL & EXTRAS
 # ==============================================================================
-echo ":: [6/7] Customizing Shell..."
+echo ":: [5/6] Finalizing Shell..."
 
-# Fish Config with Chafa (Image) & Theme Vars
+# Fish Config (Fastfetch + Theme Vars)
 cat <<EOF > ~/.config/fish/config.fish
 if status is-interactive
     set fish_greeting
-    
-    # Check for custom logo, otherwise fallback to pfetch
-    if test -f ~/Pictures/Wallpapers/logo.png
-        chafa --size=30x30 ~/Pictures/Wallpapers/logo.png
-    else if test -f ~/Pictures/Wallpapers/logo.jpg
-        chafa --size=30x30 ~/Pictures/Wallpapers/logo.jpg
-    else
-        pfetch
-    end
-
+    fastfetch
     alias ls='eza -al --icons --group-directories-first'
     alias ll='eza -l --icons --group-directories-first'
     alias vim='zed' 
     starship init fish | source
 end
 
-# FORCE THEMING for Qt/GTK Apps
+# SURE-FIRE DARK MODE VARS
 set -gx GTK_THEME "Gruvbox-Dark"
-set -gx QT_QPA_PLATFORMTHEME "qt5ct"
+# This forces Qt apps to look exactly like GTK apps
+set -gx QT_QPA_PLATFORMTHEME "gtk2"
 set -gx GDK_SCALE 2
 set -gx QT_SCALE_FACTOR 2
 set -gx XCURSOR_SIZE 48
 EOF
 
-# Power Profile (Soft Fail)
-sudo systemctl enable --now power-profiles-daemon.service
-if command -v powerprofilesctl &> /dev/null; then
-    powerprofilesctl set performance || echo ":: Note: Performance mode unavailable (VM restriction)."
-fi
-sudo systemctl mask sleep.target suspend.target
+# Wob Config
+mkdir -p ~/.config/wob
+cat <<EOF > ~/.config/wob/wob.ini
+timeout = 1000
+max = 100
+width = 400
+height = 40
+border_size = 2
+bar_color = d79921
+border_color = 282828
+background_color = 282828
+EOF
 
-# Finalize
+# Recording Script
+mkdir -p ~/.local/bin
+cat <<EOF > ~/.local/bin/record-screen.sh
+#!/bin/bash
+PIDFILE="/tmp/recording.pid"
+if [ -f "\$PIDFILE" ]; then
+    kill -SIGINT \$(cat "\$PIDFILE")
+    rm "\$PIDFILE"
+else
+    mkdir -p ~/Videos
+    wf-recorder -f ~/Videos/recording_\$(date +%s).mp4 &
+    echo \$! > "\$PIDFILE"
+fi
+EOF
+chmod +x ~/.local/bin/record-screen.sh
+
+# Power & Services
+sudo systemctl enable --now power-profiles-daemon.service
+sudo systemctl mask sleep.target suspend.target
 systemctl --user enable --now wireplumber.service pipewire-pulse.service
 chsh -s /usr/bin/fish
 
 echo ":: ---------------------------------------------------"
 echo ":: INSTALL COMPLETE."
-echo ":: 1. PCManFM/LibreWolf should now be dark."
-echo ":: 2. Lock screen is now blurred with a box."
-echo ":: 3. Zed should launch (using software renderer)."
-echo ":: 4. Volume bar is Gruvbox themed."
-echo ":: Type 'sway' to start."
 echo ":: ---------------------------------------------------"
