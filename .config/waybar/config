@@ -35,6 +35,11 @@
         "max-length": 50
     },
 
+    "tray": {
+        "icon-size": 14,
+        "spacing": 10
+    },
+
     "clock": {
         "interval": 1,
         "format": "{:%I:%M:%S %p | %a %d-%m-%Y}",
