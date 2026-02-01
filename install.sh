@@ -19,10 +19,10 @@ pipewire pipewire-pulse wireplumber pamixer \
 wl-clipboard grim slurp imv \
 wob wf-recorder btop"
 
-# Clipboard Manager (The Persistence Fix)
+# Clipboard Manager (Persistence)
 PACKAGES+=" cliphist"
 
-# Screen Sharing (The Portal Bridge)
+# Screen Sharing (Portal Bridge)
 PACKAGES+=" xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk"
 
 # GPU Drivers (AMD RX 6400 Specific)
@@ -46,16 +46,32 @@ PACKAGES+=" fish eza fzf starship zed mpv"
 
 sudo pacman -S --needed --noconfirm $PACKAGES
 
-# Reflector Optimization (Tweaked for reliability)
-# Increased download timeout to 5 seconds to give further mirrors a chance
+# ==============================================================================
+# 2. REFLECTOR (MIRROR FIX FOR UAE)
+# ==============================================================================
+echo ":: [2/4] Optimizing Mirrors (Targeting DE/NL/SG for Speed)..."
+
+# Installs Reflector
 if ! command -v reflector &> /dev/null; then sudo pacman -S --noconfirm reflector; fi
-echo ":: Optimizing Mirrors (Speed Test)..."
-sudo reflector --latest 10 --protocol https --sort rate --download-timeout 5 --save /etc/pacman.d/mirrorlist
+
+# The Strategy:
+# 1. --country DE,NL,SG: These usually have the best routing for UAE.
+# 2. --latest 20: Only check fresh servers.
+# 3. --download-timeout 20: Gives them 20s to respond before "Timing Out".
+sudo reflector \
+    --country 'Germany,Netherlands,Singapore,United Arab Emirates' \
+    --latest 20 \
+    --protocol https \
+    --sort rate \
+    --download-timeout 20 \
+    --save /etc/pacman.d/mirrorlist
+
+echo ":: Mirrors Updated."
 
 # ==============================================================================
-# 2. AUR ESSENTIALS
+# 3. AUR ESSENTIALS
 # ==============================================================================
-echo ":: [2/4] Installing AUR Tools..."
+echo ":: [3/4] Installing AUR Tools..."
 
 if ! command -v yay &> /dev/null; then
     sudo pacman -S --needed --noconfirm base-devel git
@@ -65,21 +81,21 @@ fi
 yay -S --noconfirm librewolf-bin fastfetch
 
 # ==============================================================================
-# 3. CRITICAL BINARY & SHELL FIXES
+# 4. CRITICAL FIXES (Zed & Shell)
 # ==============================================================================
 echo ":: [3/4] Applying Binary & Shell Fixes..."
 
-# FIX 1: Zed Binary Name
+# FIX: Zed Binary Name
 if [ -f /usr/bin/zeditor ]; then
     sudo ln -sf /usr/bin/zeditor /usr/bin/zed
 fi
 
-# FIX 2: TTY vs Foot Separation
+# FIX: TTY vs Foot Separation
 echo ":: Resetting system shell to Bash (for TTY)..."
 sudo chsh -s /bin/bash $(whoami)
 
 # ==============================================================================
-# 4. CONFIGURATION
+# 5. CONFIGURATION
 # ==============================================================================
 echo ":: [4/4] Writing Configurations..."
 mkdir -p ~/.config/{sway,foot,fuzzel,fish,mako,wob}
@@ -100,13 +116,16 @@ fi
 EOF
 chmod +x ~/.local/bin/audio-selector.sh
 
-# --- B. Fish Shell (SIMPLIFIED) ---
+# --- B. Fish Shell (Updated with Mirror Test) ---
 cat <<EOF > ~/.config/fish/config.fish
 if status is-interactive
     set fish_greeting
     
     alias ls='eza -al --icons --group-directories-first'
     alias ll='eza -l --icons --group-directories-first'
+
+    # Test Mirrors Alias
+    alias test-mirrors='sudo reflector --country "Germany,Netherlands,Singapore" --latest 5 --sort rate --save /etc/pacman.d/mirrorlist'
 
     # GUI Tools (Always run because TTY is Bash)
     fastfetch
@@ -266,7 +285,6 @@ bar {
     font pango:JetBrainsMono Nerd Font Regular 10
     
     # Format: 04:30:15 PM | Sun 01-02-2026
-    # Added %a for Day Name (Sun, Mon, Tue)
     status_command while date +'%I:%M:%S %p | %a %d-%m-%Y'; do sleep 1; done
 
     colors {
@@ -301,10 +319,11 @@ bindsym \$mod+Shift+Return exec thunar
 bindsym \$mod+a exec ~/.local/bin/audio-selector.sh
 bindsym \$mod+Shift+r exec ~/.local/bin/record-screen.sh
 
-# Screenshots (Piped to Cliphist for Persistence)
-# We pipe into 'wl-copy' so Cliphist detects it automatically via the listener
-bindsym \$mod+p exec grim - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Full Screen Saved & Copied"
-bindsym \$mod+Shift+s exec grim -g "\$(slurp)" - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Region Saved & Copied"
+# Screenshots (CLIPBOARD PERSISTENCE)
+# We pipe to 'wl-copy' AND save to file.
+# Note: cliphist must be running (see autostart) to save this after the command ends.
+bindsym \$mod+p exec grim - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Full Screen Copied"
+bindsym \$mod+Shift+s exec grim -g "\$(slurp)" - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Region Copied"
 
 # Navigation
 bindsym \$mod+h focus left
@@ -337,15 +356,14 @@ bindsym \$mod+Shift+4 move container to workspace 4
 bindsym \$mod+Shift+5 move container to workspace 5
 
 # --- Autostart ---
-# 1. Screen Sharing Environment (CRITICAL)
-# This imports the variables that tell XDG Portals "We are using Sway"
+# 1. Screen Sharing Portals (Must run first)
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway
 
-# 2. Polkit (Required for permissions)
+# 2. Permissions
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 
-# 3. Clipboard Manager (Persistence)
-# This watches for copies and stores them, so they don't vanish when apps close.
+# 3. CLIPBOARD MANAGER (Critical for Persistence)
+# This daemon catches your copies so they don't vanish
 exec wl-paste --watch cliphist store
 
 # 4. Other Services
@@ -355,7 +373,7 @@ exec /usr/lib/xdg-desktop-portal-wlr
 EOF
 
 # ==============================================================================
-# 5. FINAL STEPS
+# 6. FINAL STEPS
 # ==============================================================================
 echo ":: [4/4] Finalizing..."
 
@@ -390,8 +408,7 @@ systemctl --user enable --now wireplumber.service pipewire-pulse.service
 
 echo ":: ---------------------------------------------------"
 echo ":: INSTALL COMPLETE."
-echo ":: 1. Clipboard persistence active (Cliphist)."
-echo ":: 2. Screen sharing fixed (DBus environment update)."
-echo ":: 3. Thumbnails enabled (Tumbler)."
-echo ":: 4. Day of week added to bar."
+echo ":: 1. Clipboard Manager (Cliphist) is now active."
+echo ":: 2. Reflector updated (Targeting DE/NL/SG)."
+echo ":: 3. Thumbnails enabled."
 echo ":: ---------------------------------------------------"
