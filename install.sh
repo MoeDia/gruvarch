@@ -11,67 +11,48 @@ fi
 # ==============================================================================
 # 1. INSTALLATION
 # ==============================================================================
-echo ":: [1/4] Installing Production Packages..."
+echo ":: [1/4] Installing Packages..."
 
-# Core Wayland & Audio
-PACKAGES="sway swaybg foot fuzzel mako \
+# Core Wayland (Added xorg-xwayland to fix startup crash)
+PACKAGES="sway swaybg foot fuzzel mako xorg-xwayland \
 pipewire pipewire-pulse wireplumber pamixer \
-wl-clipboard grim slurp imv \
 wob wf-recorder btop"
 
-# Clipboard Manager (Persistence)
-PACKAGES+=" cliphist"
+# CLIPBOARD (The 100% Fix)
+# wl-clipboard: The actual copy/paste tool
+# cliphist: The history manager that keeps items in memory
+PACKAGES+=" wl-clipboard cliphist"
 
-# Screen Sharing (Portal Bridge)
-PACKAGES+=" xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk"
-
-# GPU Drivers (AMD RX 6400 Specific)
+# GPU Drivers (AMD RX 6400)
 PACKAGES+=" mesa vulkan-radeon libva-mesa-driver"
 
-# File Management (Thumbnails Included)
+# File Management (Thumbnails + Archiving)
 PACKAGES+=" thunar thunar-volman thunar-archive-plugin gvfs gvfs-mtp ntfs-3g udiskie unzip \
 tumbler ffmpegthumbnailer poppler-glib"
 
 # Media Codecs
 PACKAGES+=" ffmpeg gstreamer gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
 
-# System Tools
-PACKAGES+=" polkit-gnome power-profiles-daemon python-gobject glib2 libnotify"
+# System Tools (Fixes your Python/DBus errors)
+# python-gobject: Fixes powerprofilesctl crash
+# libappindicator-gtk3: Fixes udiskie tray icon warning
+PACKAGES+=" polkit-gnome power-profiles-daemon python-gobject glib2 libnotify libappindicator-gtk3"
+
+# Portals (Screen Sharing)
+PACKAGES+=" xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk"
 
 # Fonts & Visuals
 PACKAGES+=" xcursor-vanilla-dmz ttf-jetbrains-mono-nerd ttf-font-awesome inter-font noto-fonts"
 
-# Shell & Utilities
+# Shell
 PACKAGES+=" fish eza fzf starship zed mpv"
 
 sudo pacman -S --needed --noconfirm $PACKAGES
 
 # ==============================================================================
-# 2. REFLECTOR (MIRROR FIX FOR UAE)
+# 2. AUR ESSENTIALS
 # ==============================================================================
-echo ":: [2/4] Optimizing Mirrors (Targeting DE/NL/SG for Speed)..."
-
-# Installs Reflector
-if ! command -v reflector &> /dev/null; then sudo pacman -S --noconfirm reflector; fi
-
-# The Strategy:
-# 1. --country DE,NL,SG: These usually have the best routing for UAE.
-# 2. --latest 20: Only check fresh servers.
-# 3. --download-timeout 20: Gives them 20s to respond before "Timing Out".
-sudo reflector \
-    --country 'Germany,Netherlands,Singapore,United Arab Emirates' \
-    --latest 20 \
-    --protocol https \
-    --sort rate \
-    --download-timeout 20 \
-    --save /etc/pacman.d/mirrorlist
-
-echo ":: Mirrors Updated."
-
-# ==============================================================================
-# 3. AUR ESSENTIALS
-# ==============================================================================
-echo ":: [3/4] Installing AUR Tools..."
+echo ":: [2/4] Installing AUR Tools..."
 
 if ! command -v yay &> /dev/null; then
     sudo pacman -S --needed --noconfirm base-devel git
@@ -81,9 +62,9 @@ fi
 yay -S --noconfirm librewolf-bin fastfetch
 
 # ==============================================================================
-# 4. CRITICAL FIXES (Zed & Shell)
+# 3. CRITICAL BINARY & SHELL FIXES
 # ==============================================================================
-echo ":: [3/4] Applying Binary & Shell Fixes..."
+echo ":: [3/4] Applying Fixes..."
 
 # FIX: Zed Binary Name
 if [ -f /usr/bin/zeditor ]; then
@@ -91,21 +72,21 @@ if [ -f /usr/bin/zeditor ]; then
 fi
 
 # FIX: TTY vs Foot Separation
-echo ":: Resetting system shell to Bash (for TTY)..."
+echo ":: Resetting system shell to Bash..."
 sudo chsh -s /bin/bash $(whoami)
 
 # ==============================================================================
-# 5. CONFIGURATION
+# 4. CONFIGURATION
 # ==============================================================================
 echo ":: [4/4] Writing Configurations..."
 mkdir -p ~/.config/{sway,foot,fuzzel,fish,mako,wob}
 mkdir -p ~/.local/bin
 mkdir -p ~/Pictures/Wallpapers
 
-# Wallpaper Setup
+# Wallpaper
 cp "./classroom.jpg" ~/Pictures/Wallpapers/classroom.jpg
 
-# --- A. Helper Scripts (Audio Selector) ---
+# --- A. Helper Scripts ---
 cat <<EOF > ~/.local/bin/audio-selector.sh
 #!/bin/bash
 sink=\$(pactl list short sinks | cut -f 2 | fuzzel --dmenu --prompt="Audio Output: " --lines=5 --width=50)
@@ -116,7 +97,7 @@ fi
 EOF
 chmod +x ~/.local/bin/audio-selector.sh
 
-# --- B. Fish Shell (Updated with Mirror Test) ---
+# --- B. Fish Shell (GUI Only) ---
 cat <<EOF > ~/.config/fish/config.fish
 if status is-interactive
     set fish_greeting
@@ -124,14 +105,11 @@ if status is-interactive
     alias ls='eza -al --icons --group-directories-first'
     alias ll='eza -l --icons --group-directories-first'
 
-    # Test Mirrors Alias
-    alias test-mirrors='sudo reflector --country "Germany,Netherlands,Singapore" --latest 5 --sort rate --save /etc/pacman.d/mirrorlist'
-
-    # GUI Tools (Always run because TTY is Bash)
+    # GUI Logic
     fastfetch
     starship init fish | source
     
-    # Critical for Screen Sharing
+    # Portal Environment
     set -gx XDG_CURRENT_DESKTOP sway
     set -gx XDG_SESSION_DESKTOP sway
 end
@@ -173,7 +151,7 @@ disabled = false
 disabled = true
 EOF
 
-# --- D. Foot (FORCES FISH) ---
+# --- D. Foot (Forces Fish) ---
 cat <<EOF > ~/.config/foot/foot.ini
 [main]
 font=JetBrainsMono Nerd Font:size=10
@@ -222,7 +200,7 @@ selection-text=282828ff
 border=d79921ff
 EOF
 
-# --- F. Wob (Gruvbox Volume Bar) ---
+# --- F. Wob (Gruvbox) ---
 cat <<EOF > ~/.config/wob/wob.ini
 timeout = 1000
 max = 100
@@ -234,7 +212,7 @@ border_color = 282828
 background_color = 282828
 EOF
 
-# --- G. Mako (Gruvbox Notifications) ---
+# --- G. Mako (Gruvbox) ---
 cat <<EOF > ~/.config/mako/config
 font=JetBrainsMono Nerd Font 10
 background-color=#282828
@@ -244,7 +222,7 @@ border-size=2
 default-timeout=5000
 EOF
 
-# --- H. Sway Config (Fixed Clipboard & Portals) ---
+# --- H. Sway Config (Corrected Order) ---
 cat <<EOF > ~/.config/sway/config
 # --- Variables ---
 set \$mod Mod4
@@ -256,8 +234,6 @@ font pango:JetBrainsMono Nerd Font Regular 10
 default_border pixel 2
 gaps inner 5
 gaps outer 0
-
-# Transparency
 for_window [app_id=".*"] opacity 0.95
 
 # Gruvbox Colors
@@ -283,10 +259,7 @@ seat seat0 xcursor_theme Vanilla-DMZ 48
 bar {
     position top
     font pango:JetBrainsMono Nerd Font Regular 10
-    
-    # Format: 04:30:15 PM | Sun 01-02-2026
     status_command while date +'%I:%M:%S %p | %a %d-%m-%Y'; do sleep 1; done
-
     colors {
         statusline #ebdbb2
         background #282828
@@ -319,11 +292,10 @@ bindsym \$mod+Shift+Return exec thunar
 bindsym \$mod+a exec ~/.local/bin/audio-selector.sh
 bindsym \$mod+Shift+r exec ~/.local/bin/record-screen.sh
 
-# Screenshots (CLIPBOARD PERSISTENCE)
-# We pipe to 'wl-copy' AND save to file.
-# Note: cliphist must be running (see autostart) to save this after the command ends.
-bindsym \$mod+p exec grim - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Full Screen Copied"
-bindsym \$mod+Shift+s exec grim -g "\$(slurp)" - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Region Copied"
+# Screenshots (SAVES TO CLIPBOARD)
+# We pipe the image data into 'wl-copy'. This puts it in the clipboard buffer.
+bindsym \$mod+p exec grim - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Saved & Copied"
+bindsym \$mod+Shift+s exec grim -g "\$(slurp)" - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Saved & Copied"
 
 # Navigation
 bindsym \$mod+h focus left
@@ -355,15 +327,15 @@ bindsym \$mod+Shift+3 move container to workspace 3
 bindsym \$mod+Shift+4 move container to workspace 4
 bindsym \$mod+Shift+5 move container to workspace 5
 
-# --- Autostart ---
-# 1. Screen Sharing Portals (Must run first)
+# --- Autostart (Correct Order) ---
+# 1. DBus Import (Fixes Mako & Portals)
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway
 
-# 2. Permissions
+# 2. Polkit
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 
-# 3. CLIPBOARD MANAGER (Critical for Persistence)
-# This daemon catches your copies so they don't vanish
+# 3. CLIPBOARD MANAGER (Fixes Broken Paste)
+# Stores history so it doesn't disappear when you close an app
 exec wl-paste --watch cliphist store
 
 # 4. Other Services
@@ -373,7 +345,7 @@ exec /usr/lib/xdg-desktop-portal-wlr
 EOF
 
 # ==============================================================================
-# 6. FINAL STEPS
+# 5. FINAL STEPS
 # ==============================================================================
 echo ":: [4/4] Finalizing..."
 
@@ -394,21 +366,19 @@ fi
 EOF
 chmod +x ~/.local/bin/record-screen.sh
 
-# Power & Services
+# Power
 sudo systemctl enable --now power-profiles-daemon.service
 if command -v powerprofilesctl &> /dev/null; then
     powerprofilesctl set performance
 fi
 
-# Disable Sleep
+# Services
 sudo systemctl mask sleep.target suspend.target
-
-# Enable Audio
 systemctl --user enable --now wireplumber.service pipewire-pulse.service
 
 echo ":: ---------------------------------------------------"
 echo ":: INSTALL COMPLETE."
-echo ":: 1. Clipboard Manager (Cliphist) is now active."
-echo ":: 2. Reflector updated (Targeting DE/NL/SG)."
-echo ":: 3. Thumbnails enabled."
+echo ":: Xwayland Installed (Fixes startup error)."
+echo ":: Python GObject Installed (Fixes power error)."
+echo ":: Clipboard Manager Active (Fixes paste)."
 echo ":: ---------------------------------------------------"
