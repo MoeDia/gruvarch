@@ -56,6 +56,9 @@ bindsym $mod+d exec $menu
 bindsym $mod+Shift+c reload
 bindsym $mod+Shift+e exec swaymsg exit
 
+# -- Audio Selector (Super + A) --
+bindsym $mod+a exec ~/.local/bin/audio-selector.sh
+
 # -- Defaults (Browser & Editor) --
 bindsym $mod+b exec $browser
 bindsym $mod+c exec $editor
