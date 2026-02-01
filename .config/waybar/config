@@ -9,7 +9,7 @@
 
     "modules-left": ["sway/workspaces"],
     "modules-center": ["custom/media"],
-    "modules-right": ["clock"],
+    "modules-right": ["tray","clock"],
 
     // --- Modules ---
 
