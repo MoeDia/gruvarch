@@ -19,9 +19,10 @@ pipewire pipewire-pulse wireplumber pamixer \
 wl-clipboard grim slurp imv \
 wob wf-recorder btop"
 
-# Screen Sharing (The "Portal" Bridge)
-# xdg-desktop-portal-wlr: Lets apps record the Sway screen
-# xdg-desktop-portal-gtk: Fallback for file pickers
+# Clipboard Manager (The Persistence Fix)
+PACKAGES+=" cliphist"
+
+# Screen Sharing (The Portal Bridge)
 PACKAGES+=" xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk"
 
 # GPU Drivers (AMD RX 6400 Specific)
@@ -45,9 +46,11 @@ PACKAGES+=" fish eza fzf starship zed mpv"
 
 sudo pacman -S --needed --noconfirm $PACKAGES
 
-# Optimize Mirrors
+# Reflector Optimization (Tweaked for reliability)
+# Increased download timeout to 5 seconds to give further mirrors a chance
 if ! command -v reflector &> /dev/null; then sudo pacman -S --noconfirm reflector; fi
-sudo reflector --latest 5 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+echo ":: Optimizing Mirrors (Speed Test)..."
+sudo reflector --latest 10 --protocol https --sort rate --download-timeout 5 --save /etc/pacman.d/mirrorlist
 
 # ==============================================================================
 # 2. AUR ESSENTIALS
@@ -222,7 +225,7 @@ border-size=2
 default-timeout=5000
 EOF
 
-# --- H. Sway Config (Hardware Accelerated) ---
+# --- H. Sway Config (Fixed Clipboard & Portals) ---
 cat <<EOF > ~/.config/sway/config
 # --- Variables ---
 set \$mod Mod4
@@ -298,10 +301,9 @@ bindsym \$mod+Shift+Return exec thunar
 bindsym \$mod+a exec ~/.local/bin/audio-selector.sh
 bindsym \$mod+Shift+r exec ~/.local/bin/record-screen.sh
 
-# Screenshots (Updated: Save + Copy + Notify)
-# Mod+P = Full Screen
+# Screenshots (Piped to Cliphist for Persistence)
+# We pipe into 'wl-copy' so Cliphist detects it automatically via the listener
 bindsym \$mod+p exec grim - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Full Screen Saved & Copied"
-# Mod+Shift+S = Region
 bindsym \$mod+Shift+s exec grim -g "\$(slurp)" - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Region Saved & Copied"
 
 # Navigation
@@ -335,10 +337,20 @@ bindsym \$mod+Shift+4 move container to workspace 4
 bindsym \$mod+Shift+5 move container to workspace 5
 
 # --- Autostart ---
+# 1. Screen Sharing Environment (CRITICAL)
+# This imports the variables that tell XDG Portals "We are using Sway"
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway
+
+# 2. Polkit (Required for permissions)
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+
+# 3. Clipboard Manager (Persistence)
+# This watches for copies and stores them, so they don't vanish when apps close.
+exec wl-paste --watch cliphist store
+
+# 4. Other Services
 exec udiskie --tray
 exec mako
-# Screen Sharing Bridge
 exec /usr/lib/xdg-desktop-portal-wlr
 EOF
 
@@ -378,6 +390,8 @@ systemctl --user enable --now wireplumber.service pipewire-pulse.service
 
 echo ":: ---------------------------------------------------"
 echo ":: INSTALL COMPLETE."
-echo ":: Screenshots now copy to clipboard."
-echo ":: Screen Sharing enabled (Full Screen recommended)."
+echo ":: 1. Clipboard persistence active (Cliphist)."
+echo ":: 2. Screen sharing fixed (DBus environment update)."
+echo ":: 3. Thumbnails enabled (Tumbler)."
+echo ":: 4. Day of week added to bar."
 echo ":: ---------------------------------------------------"
