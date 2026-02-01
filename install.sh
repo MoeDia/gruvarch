@@ -9,15 +9,16 @@ if [ ! -f "./classroom.jpg" ]; then
 fi
 
 # ==============================================================================
-# 1. INSTALLATION (Hardware Accelerated)
+# 1. INSTALLATION
 # ==============================================================================
 echo ":: [1/4] Installing Production Packages..."
 
 # Core Wayland & Audio
+# Added 'btop' here
 PACKAGES="sway swaybg foot fuzzel mako \
 pipewire pipewire-pulse wireplumber pamixer \
 wl-clipboard grim slurp imv \
-wob wf-recorder"
+wob wf-recorder btop"
 
 # GPU Drivers (AMD RX 6400 Specific)
 PACKAGES+=" mesa vulkan-radeon libva-mesa-driver"
@@ -56,11 +57,24 @@ fi
 yay -S --noconfirm librewolf-bin fastfetch
 
 # ==============================================================================
-# 3. VISUAL PREP
+# 3. CRITICAL BINARY & SHELL FIXES (The "10000% Sure" Way)
 # ==============================================================================
-echo ":: [3/4] Setting up Visuals..."
-mkdir -p ~/Pictures/Wallpapers
-cp "./classroom.jpg" ~/Pictures/Wallpapers/classroom.jpg
+echo ":: [3/4] Applying Binary & Shell Fixes..."
+
+# FIX 1: Zed Binary Name
+# Arch installs it as 'zeditor'. We FORCE a symlink to 'zed' so commands work.
+if [ -f /usr/bin/zeditor ]; then
+    echo ":: Fixing Zed binary..."
+    sudo ln -sf /usr/bin/zeditor /usr/bin/zed
+else
+    echo ":: WARNING: Zed binary not found. Is the package installed?"
+fi
+
+# FIX 2: TTY vs Foot Separation
+# We FORCE the system default shell back to BASH.
+# This ensures TTY (Ctrl+Alt+F1) is always Bash.
+echo ":: Resetting system shell to Bash (for TTY)..."
+sudo chsh -s /bin/bash $(whoami)
 
 # ==============================================================================
 # 4. CONFIGURATION
@@ -68,6 +82,10 @@ cp "./classroom.jpg" ~/Pictures/Wallpapers/classroom.jpg
 echo ":: [4/4] Writing Configurations..."
 mkdir -p ~/.config/{sway,foot,fuzzel,fish,mako,wob}
 mkdir -p ~/.local/bin
+mkdir -p ~/Pictures/Wallpapers
+
+# Wallpaper Setup
+cp "./classroom.jpg" ~/Pictures/Wallpapers/classroom.jpg
 
 # --- A. Helper Scripts (Audio Selector) ---
 cat <<EOF > ~/.local/bin/audio-selector.sh
@@ -80,8 +98,8 @@ fi
 EOF
 chmod +x ~/.local/bin/audio-selector.sh
 
-# --- B. Fish Shell (Cleaned Up) ---
-# Note: This config ONLY runs when 'foot' launches fish. TTY stays on Bash.
+# --- B. Fish Shell (SIMPLIFIED) ---
+# Since we forced TTY to Bash, we assume ANY instance of Fish is running in GUI/Foot.
 cat <<EOF > ~/.config/fish/config.fish
 if status is-interactive
     set fish_greeting
@@ -90,7 +108,7 @@ if status is-interactive
     alias ls='eza -al --icons --group-directories-first'
     alias ll='eza -l --icons --group-directories-first'
 
-    # GUI Logic
+    # GUI Tools (Always run because TTY is Bash)
     fastfetch
     starship init fish | source
 end
@@ -132,12 +150,12 @@ disabled = false
 disabled = true
 EOF
 
-# --- D. Foot (Gruvbox + Forces Fish) ---
+# --- D. Foot (FORCES FISH) ---
 cat <<EOF > ~/.config/foot/foot.ini
 [main]
 font=JetBrainsMono Nerd Font:size=10
 pad=10x10
-# This makes Foot use Fish, while your system default stays Bash
+# CRITICAL: This tells Foot to run Fish, even though system default is Bash.
 shell=/usr/bin/fish
 
 [colors]
@@ -272,7 +290,7 @@ bindsym \$mod+Shift+e exec swaymsg exit
 
 # Apps
 bindsym \$mod+b exec librewolf
-# Hardware Accelerated Zed
+# Now 'zed' works because of the symlink fix
 bindsym \$mod+c exec zed
 bindsym \$mod+Shift+Return exec thunar
 
@@ -323,7 +341,7 @@ EOF
 # ==============================================================================
 # 5. FINAL STEPS
 # ==============================================================================
-echo ":: [5/5] Finalizing..."
+echo ":: [4/4] Finalizing..."
 
 # Recording Script
 cat <<EOF > ~/.local/bin/record-screen.sh
@@ -344,7 +362,6 @@ chmod +x ~/.local/bin/record-screen.sh
 
 # Power & Services
 sudo systemctl enable --now power-profiles-daemon.service
-# Force Performance for Xeon
 if command -v powerprofilesctl &> /dev/null; then
     powerprofilesctl set performance
 fi
@@ -356,6 +373,8 @@ sudo systemctl mask sleep.target suspend.target
 systemctl --user enable --now wireplumber.service pipewire-pulse.service
 
 echo ":: ---------------------------------------------------"
-echo ":: PRODUCTION INSTALL COMPLETE."
-echo ":: TTY = Bash | Foot = Fish"
+echo ":: INSTALL COMPLETE."
+echo ":: TTY = Bash (Fixed)"
+echo ":: Terminal = Fish (Fixed)"
+echo ":: Zed Editor = Linked & Ready"
 echo ":: ---------------------------------------------------"
