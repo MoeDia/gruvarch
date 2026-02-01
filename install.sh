@@ -19,13 +19,15 @@ pipewire pipewire-pulse wireplumber pamixer \
 wl-clipboard grim slurp imv \
 wob wf-recorder btop"
 
+# Screen Sharing (The "Portal" Bridge)
+# xdg-desktop-portal-wlr: Lets apps record the Sway screen
+# xdg-desktop-portal-gtk: Fallback for file pickers
+PACKAGES+=" xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk"
+
 # GPU Drivers (AMD RX 6400 Specific)
 PACKAGES+=" mesa vulkan-radeon libva-mesa-driver"
 
-# File Management (Now with THUMBNAILS)
-# 'tumbler' = The thumbnail engine
-# 'ffmpegthumbnailer' = Video thumbnails
-# 'poppler-glib' = PDF thumbnails
+# File Management (Thumbnails Included)
 PACKAGES+=" thunar thunar-volman thunar-archive-plugin gvfs gvfs-mtp ntfs-3g udiskie unzip \
 tumbler ffmpegthumbnailer poppler-glib"
 
@@ -66,7 +68,6 @@ echo ":: [3/4] Applying Binary & Shell Fixes..."
 
 # FIX 1: Zed Binary Name
 if [ -f /usr/bin/zeditor ]; then
-    echo ":: Fixing Zed binary..."
     sudo ln -sf /usr/bin/zeditor /usr/bin/zed
 fi
 
@@ -101,13 +102,16 @@ cat <<EOF > ~/.config/fish/config.fish
 if status is-interactive
     set fish_greeting
     
-    # Aliases
     alias ls='eza -al --icons --group-directories-first'
     alias ll='eza -l --icons --group-directories-first'
 
     # GUI Tools (Always run because TTY is Bash)
     fastfetch
     starship init fish | source
+    
+    # Critical for Screen Sharing
+    set -gx XDG_CURRENT_DESKTOP sway
+    set -gx XDG_SESSION_DESKTOP sway
 end
 EOF
 
@@ -152,7 +156,6 @@ cat <<EOF > ~/.config/foot/foot.ini
 [main]
 font=JetBrainsMono Nerd Font:size=10
 pad=10x10
-# CRITICAL: This tells Foot to run Fish, even though system default is Bash.
 shell=/usr/bin/fish
 
 [colors]
@@ -259,8 +262,9 @@ bar {
     position top
     font pango:JetBrainsMono Nerd Font Regular 10
     
-    # Format: 04:30:15 PM | 01-02-2026
-    status_command while date +'%I:%M:%S %p | %d-%m-%Y'; do sleep 1; done
+    # Format: 04:30:15 PM | Sun 01-02-2026
+    # Added %a for Day Name (Sun, Mon, Tue)
+    status_command while date +'%I:%M:%S %p | %a %d-%m-%Y'; do sleep 1; done
 
     colors {
         statusline #ebdbb2
@@ -287,7 +291,6 @@ bindsym \$mod+Shift+e exec swaymsg exit
 
 # Apps
 bindsym \$mod+b exec librewolf
-# Now 'zed' works because of the symlink fix
 bindsym \$mod+c exec zed
 bindsym \$mod+Shift+Return exec thunar
 
@@ -295,9 +298,11 @@ bindsym \$mod+Shift+Return exec thunar
 bindsym \$mod+a exec ~/.local/bin/audio-selector.sh
 bindsym \$mod+Shift+r exec ~/.local/bin/record-screen.sh
 
-# Screenshots
-bindsym \$mod+p exec grim ~/Pictures/shot_\$(date +%s).png
-bindsym \$mod+Shift+s exec grim -g "\$(slurp)" ~/Pictures/shot_\$(date +%s).png
+# Screenshots (Updated: Save + Copy + Notify)
+# Mod+P = Full Screen
+bindsym \$mod+p exec grim - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Full Screen Saved & Copied"
+# Mod+Shift+S = Region
+bindsym \$mod+Shift+s exec grim -g "\$(slurp)" - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Region Saved & Copied"
 
 # Navigation
 bindsym \$mod+h focus left
@@ -333,6 +338,8 @@ bindsym \$mod+Shift+5 move container to workspace 5
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec udiskie --tray
 exec mako
+# Screen Sharing Bridge
+exec /usr/lib/xdg-desktop-portal-wlr
 EOF
 
 # ==============================================================================
@@ -371,6 +378,6 @@ systemctl --user enable --now wireplumber.service pipewire-pulse.service
 
 echo ":: ---------------------------------------------------"
 echo ":: INSTALL COMPLETE."
-echo ":: Tumbler & FFmpegthumbnailer installed."
-echo ":: Thumbnails will now appear in Thunar."
+echo ":: Screenshots now copy to clipboard."
+echo ":: Screen Sharing enabled (Full Screen recommended)."
 echo ":: ---------------------------------------------------"
