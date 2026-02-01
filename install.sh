@@ -9,11 +9,11 @@ if [ ! -f "./classroom.jpg" ]; then
 fi
 
 # ==============================================================================
-# 1. OPTIMIZED INSTALLATION
+# 1. INSTALLATION (Optimized)
 # ==============================================================================
-echo ":: [1/5] Installing Optimized Packages..."
+echo ":: [1/4] Installing Optimized Packages..."
 
-# Core Wayland & Audio (Wob added)
+# Core Wayland & Audio
 PACKAGES="sway swaybg foot fuzzel mako \
 pipewire pipewire-pulse wireplumber pamixer \
 wl-clipboard grim slurp imv \
@@ -22,16 +22,16 @@ wob wf-recorder"
 # File Management (Thunar + Archives + Drives + NTFS)
 PACKAGES+=" thunar thunar-volman thunar-archive-plugin gvfs gvfs-mtp ntfs-3g udiskie unzip"
 
-# Media Codecs (Comprehensive)
+# Media Codecs
 PACKAGES+=" ffmpeg gstreamer gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
 
-# System Tools (Polkit, Power, Python for utils)
-PACKAGES+=" polkit-gnome power-profiles-daemon python-gobject glib2 libnotify imagemagick"
+# System Tools (Polkit, Power)
+PACKAGES+=" polkit-gnome power-profiles-daemon python-gobject glib2 libnotify"
 
-# Fonts & Visuals (JetBrains Nerd Font, etc.)
+# Fonts & Visuals
 PACKAGES+=" xcursor-vanilla-dmz ttf-jetbrains-mono-nerd ttf-font-awesome inter-font noto-fonts"
 
-# Shell & Utilities
+# Shell & Utilities (No ImageMagick, No Gtklock)
 PACKAGES+=" fish eza fzf starship zed mpv"
 
 sudo pacman -S --needed --noconfirm $PACKAGES
@@ -43,36 +43,43 @@ sudo reflector --latest 5 --protocol https --sort rate --save /etc/pacman.d/mirr
 # ==============================================================================
 # 2. AUR ESSENTIALS
 # ==============================================================================
-echo ":: [2/5] Installing AUR Tools..."
+echo ":: [2/4] Installing AUR Tools..."
 
 if ! command -v yay &> /dev/null; then
     sudo pacman -S --needed --noconfirm base-devel git
     git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si --noconfirm && cd .. && rm -rf yay-bin
 fi
 
-# gtklock: Lockscreen
-# fastfetch: System Info
-# librewolf-bin: Browser
-yay -S --noconfirm librewolf-bin gtklock fastfetch
+# Only essentials (No Lockscreen)
+yay -S --noconfirm librewolf-bin fastfetch
 
 # ==============================================================================
-# 3. VISUAL PREP (Wallpaper & Blur)
+# 3. VISUAL PREP
 # ==============================================================================
-echo ":: [3/5] Setting up Visuals..."
+echo ":: [3/4] Setting up Visuals..."
 mkdir -p ~/Pictures/Wallpapers
 cp "./classroom.jpg" ~/Pictures/Wallpapers/classroom.jpg
-
-# Generate blurred image for lockscreen (Sure-fire method)
-convert ~/Pictures/Wallpapers/classroom.jpg -blur 0x20 ~/Pictures/Wallpapers/lock_blurred.jpg
 
 # ==============================================================================
 # 4. CONFIGURATION
 # ==============================================================================
-echo ":: [4/5] Writing Configurations..."
-mkdir -p ~/.config/{sway,foot,fuzzel,fish,mako,gtklock,wob}
+echo ":: [4/4] Writing Configurations..."
+mkdir -p ~/.config/{sway,foot,fuzzel,fish,mako,wob}
 mkdir -p ~/.local/bin
 
-# --- A. Fish Shell (TTY Separation Logic) ---
+# --- A. Helper Scripts (Audio Selector) ---
+cat <<EOF > ~/.local/bin/audio-selector.sh
+#!/bin/bash
+# Lists audio outputs and lets you select one via Fuzzel
+sink=\$(pactl list short sinks | cut -f 2 | fuzzel --dmenu --prompt="Audio Output: " --lines=5 --width=50)
+if [ -n "\$sink" ]; then
+    pactl set-default-sink "\$sink"
+    pactl list short sink-inputs | cut -f 1 | xargs -I {} pactl move-sink-input {} "\$sink"
+fi
+EOF
+chmod +x ~/.local/bin/audio-selector.sh
+
+# --- B. Fish Shell (GUI Only) ---
 cat <<EOF > ~/.config/fish/config.fish
 if status is-interactive
     set fish_greeting
@@ -81,28 +88,22 @@ if status is-interactive
     alias ls='eza -al --icons --group-directories-first'
     alias ll='eza -l --icons --group-directories-first'
 
-    # GUI-Only Logic (Sway)
-    if set -q WAYLAND_DISPLAY
-        # 1. Run Fastfetch
-        fastfetch
-        
-        # 2. Use Starship Prompt
-        starship init fish | source
-        
-        # 3. GUI Theme Variables (Sure-fire Dark Mode)
-        set -gx GTK_THEME "Gruvbox-Dark"
-        set -gx QT_QPA_PLATFORMTHEME "gtk2"
-        set -gx GDK_SCALE 2
-        set -gx QT_SCALE_FACTOR 2
-        set -gx XCURSOR_SIZE 48
-    else
-        # TTY Logic (Default Prompt, No Fancy Stuff)
-        # Keeping it clean prevents the "?" font errors
-    end
+    # Run Fastfetch
+    fastfetch
+    
+    # Use Starship Prompt
+    starship init fish | source
+    
+    # GUI Theme Variables (Sure-fire Dark Mode)
+    set -gx GTK_THEME "Gruvbox-Dark"
+    set -gx QT_QPA_PLATFORMTHEME "gtk2"
+    set -gx GDK_SCALE 2
+    set -gx QT_SCALE_FACTOR 2
+    set -gx XCURSOR_SIZE 48
 end
 EOF
 
-# --- B. Starship (Pure Preset) ---
+# --- C. Starship (Pure Preset) ---
 cat <<EOF > ~/.config/starship.toml
 [character]
 success_symbol = "[❯](bold green)"
@@ -138,11 +139,13 @@ disabled = false
 disabled = true
 EOF
 
-# --- C. Foot (Gruvbox) ---
+# --- D. Foot (Gruvbox + Fish Launch) ---
 cat <<EOF > ~/.config/foot/foot.ini
 [main]
 font=JetBrainsMono Nerd Font:size=10
 pad=10x10
+# Launch Fish automatically in the terminal, keeping TTY as Bash
+shell=/usr/bin/fish
 
 [colors]
 alpha=1.0
@@ -166,7 +169,7 @@ bright6=8ec07c
 bright7=ebdbb2
 EOF
 
-# --- D. Fuzzel (Gruvbox) ---
+# --- E. Fuzzel (Gruvbox) ---
 cat <<EOF > ~/.config/fuzzel/fuzzel.ini
 [main]
 font=JetBrainsMono Nerd Font:size=11
@@ -186,7 +189,7 @@ selection-text=282828ff
 border=d79921ff
 EOF
 
-# --- E. Wob (Gruvbox Volume Bar) ---
+# --- F. Wob (Gruvbox Volume Bar) ---
 cat <<EOF > ~/.config/wob/wob.ini
 timeout = 1000
 max = 100
@@ -196,21 +199,6 @@ border_size = 2
 bar_color = d79921
 border_color = 282828
 background_color = 282828
-EOF
-
-# --- F. Gtklock (Gruvbox + Blurred BG) ---
-cat <<EOF > ~/.config/gtklock/config.ini
-[main]
-gtk-theme=Gruvbox-Dark
-style=~/.config/gtklock/style.css
-EOF
-
-cat <<EOF > ~/.config/gtklock/style.css
-window {
-    background-image: url("$(echo ~)/Pictures/Wallpapers/lock_blurred.jpg");
-    background-size: cover;
-    background-repeat: no-repeat;
-}
 EOF
 
 # --- G. Mako (Gruvbox Notifications) ---
@@ -258,13 +246,13 @@ input * {
 }
 seat seat0 xcursor_theme Vanilla-DMZ 48
 
-# --- Bar (JetBrains Regular, Clean Separation) ---
+# --- Bar (JetBrains Regular, Seconds Added) ---
 bar {
     position top
     font pango:JetBrainsMono Nerd Font Regular 10
     
-    # Format: 04:30 PM | 01-02-2026
-    status_command while date +'%I:%M %p | %d-%m-%Y'; do sleep 1; done
+    # Format: 04:30:15 PM | 01-02-2026
+    status_command while date +'%I:%M:%S %p | %d-%m-%Y'; do sleep 1; done
 
     colors {
         statusline #ebdbb2
@@ -295,8 +283,8 @@ bindsym \$mod+b exec librewolf
 bindsym \$mod+c exec zed --disable-gpu
 bindsym \$mod+Shift+Return exec thunar
 
-# Lock Screen (Gtklock)
-bindsym \$mod+Escape exec gtklock
+# Audio Selector (Super+A)
+bindsym \$mod+a exec ~/.local/bin/audio-selector.sh
 
 # Screenshots & Recording (No Print Key)
 bindsym \$mod+p exec grim ~/Pictures/shot_\$(date +%s).png
@@ -374,10 +362,8 @@ sudo systemctl mask sleep.target suspend.target
 # Enable Audio
 systemctl --user enable --now wireplumber.service pipewire-pulse.service
 
-# Set Shell
-chsh -s /usr/bin/fish
-
 echo ":: ---------------------------------------------------"
-echo ":: ULTIMATE SETUP COMPLETE."
+echo ":: INSTALL COMPLETE."
+echo ":: TTY is Bash. Terminal is Fish."
 echo ":: Type 'sway' to launch."
 echo ":: ---------------------------------------------------"
