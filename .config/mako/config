@@ -1,0 +1,22 @@
+# Visuals
+font=JetBrainsMono Nerd Font 10
+border-size=2
+border-radius=10
+
+# Placement
+anchor=top-right
+margin=10
+
+# Colors (Gruvbox Dark)
+background-color=#282828
+text-color=#ebdbb2
+border-color=#d79921
+
+# Behavior
+default-timeout=5000
+ignore-timeout=0
+
+[urgency=critical]
+border-color=#cc241d
+text-color=#fb4934
+default-timeout=0
