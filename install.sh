@@ -9,9 +9,9 @@ if [ ! -f "./classroom.jpg" ]; then
 fi
 
 # ==============================================================================
-# 1. INSTALLATION (Optimized)
+# 1. INSTALLATION (Hardware Accelerated)
 # ==============================================================================
-echo ":: [1/4] Installing Optimized Packages..."
+echo ":: [1/4] Installing Production Packages..."
 
 # Core Wayland & Audio
 PACKAGES="sway swaybg foot fuzzel mako \
@@ -19,24 +19,27 @@ pipewire pipewire-pulse wireplumber pamixer \
 wl-clipboard grim slurp imv \
 wob wf-recorder"
 
-# File Management (Thunar + Archives + Drives + NTFS)
+# GPU Drivers (AMD RX 6400 Specific)
+PACKAGES+=" mesa vulkan-radeon libva-mesa-driver"
+
+# File Management
 PACKAGES+=" thunar thunar-volman thunar-archive-plugin gvfs gvfs-mtp ntfs-3g udiskie unzip"
 
 # Media Codecs
 PACKAGES+=" ffmpeg gstreamer gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
 
-# System Tools (Polkit, Power)
+# System Tools
 PACKAGES+=" polkit-gnome power-profiles-daemon python-gobject glib2 libnotify"
 
 # Fonts & Visuals
 PACKAGES+=" xcursor-vanilla-dmz ttf-jetbrains-mono-nerd ttf-font-awesome inter-font noto-fonts"
 
-# Shell & Utilities (No ImageMagick, No Gtklock)
+# Shell & Utilities
 PACKAGES+=" fish eza fzf starship zed mpv"
 
 sudo pacman -S --needed --noconfirm $PACKAGES
 
-# Speed up future downloads
+# Optimize Mirrors
 if ! command -v reflector &> /dev/null; then sudo pacman -S --noconfirm reflector; fi
 sudo reflector --latest 5 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
@@ -50,7 +53,6 @@ if ! command -v yay &> /dev/null; then
     git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si --noconfirm && cd .. && rm -rf yay-bin
 fi
 
-# Only essentials (No Lockscreen)
 yay -S --noconfirm librewolf-bin fastfetch
 
 # ==============================================================================
@@ -70,7 +72,6 @@ mkdir -p ~/.local/bin
 # --- A. Helper Scripts (Audio Selector) ---
 cat <<EOF > ~/.local/bin/audio-selector.sh
 #!/bin/bash
-# Lists audio outputs and lets you select one via Fuzzel
 sink=\$(pactl list short sinks | cut -f 2 | fuzzel --dmenu --prompt="Audio Output: " --lines=5 --width=50)
 if [ -n "\$sink" ]; then
     pactl set-default-sink "\$sink"
@@ -79,7 +80,8 @@ fi
 EOF
 chmod +x ~/.local/bin/audio-selector.sh
 
-# --- B. Fish Shell (GUI Only) ---
+# --- B. Fish Shell (Cleaned Up) ---
+# Note: This config ONLY runs when 'foot' launches fish. TTY stays on Bash.
 cat <<EOF > ~/.config/fish/config.fish
 if status is-interactive
     set fish_greeting
@@ -88,18 +90,9 @@ if status is-interactive
     alias ls='eza -al --icons --group-directories-first'
     alias ll='eza -l --icons --group-directories-first'
 
-    # Run Fastfetch
+    # GUI Logic
     fastfetch
-    
-    # Use Starship Prompt
     starship init fish | source
-    
-    # GUI Theme Variables (Sure-fire Dark Mode)
-    set -gx GTK_THEME "Gruvbox-Dark"
-    set -gx QT_QPA_PLATFORMTHEME "gtk2"
-    set -gx GDK_SCALE 2
-    set -gx QT_SCALE_FACTOR 2
-    set -gx XCURSOR_SIZE 48
 end
 EOF
 
@@ -139,12 +132,12 @@ disabled = false
 disabled = true
 EOF
 
-# --- D. Foot (Gruvbox + Fish Launch) ---
+# --- D. Foot (Gruvbox + Forces Fish) ---
 cat <<EOF > ~/.config/foot/foot.ini
 [main]
 font=JetBrainsMono Nerd Font:size=10
 pad=10x10
-# Launch Fish automatically in the terminal, keeping TTY as Bash
+# This makes Foot use Fish, while your system default stays Bash
 shell=/usr/bin/fish
 
 [colors]
@@ -211,7 +204,7 @@ border-size=2
 default-timeout=5000
 EOF
 
-# --- H. Sway Config (Optimized) ---
+# --- H. Sway Config (Hardware Accelerated) ---
 cat <<EOF > ~/.config/sway/config
 # --- Variables ---
 set \$mod Mod4
@@ -224,7 +217,7 @@ default_border pixel 2
 gaps inner 5
 gaps outer 0
 
-# Transparency (95% Opacity)
+# Transparency
 for_window [app_id=".*"] opacity 0.95
 
 # Gruvbox Colors
@@ -246,7 +239,7 @@ input * {
 }
 seat seat0 xcursor_theme Vanilla-DMZ 48
 
-# --- Bar (JetBrains Regular, Seconds Added) ---
+# --- Bar ---
 bar {
     position top
     font pango:JetBrainsMono Nerd Font Regular 10
@@ -264,7 +257,7 @@ bar {
     }
 }
 
-# --- Audio (Wob Integration) ---
+# --- Audio (Wob) ---
 set \$WOBSOCK \$XDG_RUNTIME_DIR/wob.sock
 exec mkfifo \$WOBSOCK && tail -f \$WOBSOCK | wob
 bindsym \$mod+equal exec pamixer -i 5 && pamixer --get-volume > \$WOBSOCK
@@ -275,21 +268,21 @@ bindsym \$mod+Return exec \$term
 bindsym \$mod+Shift+q kill
 bindsym \$mod+d exec \$menu
 bindsym \$mod+Shift+c reload
-# Instant Exit (No Nag)
 bindsym \$mod+Shift+e exec swaymsg exit
 
 # Apps
 bindsym \$mod+b exec librewolf
-bindsym \$mod+c exec zed --disable-gpu
+# Hardware Accelerated Zed
+bindsym \$mod+c exec zed
 bindsym \$mod+Shift+Return exec thunar
 
-# Audio Selector (Super+A)
+# Helper Scripts
 bindsym \$mod+a exec ~/.local/bin/audio-selector.sh
+bindsym \$mod+Shift+r exec ~/.local/bin/record-screen.sh
 
-# Screenshots & Recording (No Print Key)
+# Screenshots
 bindsym \$mod+p exec grim ~/Pictures/shot_\$(date +%s).png
 bindsym \$mod+Shift+s exec grim -g "\$(slurp)" ~/Pictures/shot_\$(date +%s).png
-bindsym \$mod+Shift+r exec ~/.local/bin/record-screen.sh
 
 # Navigation
 bindsym \$mod+h focus left
@@ -349,11 +342,11 @@ fi
 EOF
 chmod +x ~/.local/bin/record-screen.sh
 
-# Performance & Services
+# Power & Services
 sudo systemctl enable --now power-profiles-daemon.service
-sleep 2
+# Force Performance for Xeon
 if command -v powerprofilesctl &> /dev/null; then
-    powerprofilesctl set performance || echo ":: Performance mode not supported (VM?)"
+    powerprofilesctl set performance
 fi
 
 # Disable Sleep
@@ -363,7 +356,6 @@ sudo systemctl mask sleep.target suspend.target
 systemctl --user enable --now wireplumber.service pipewire-pulse.service
 
 echo ":: ---------------------------------------------------"
-echo ":: INSTALL COMPLETE."
-echo ":: TTY is Bash. Terminal is Fish."
-echo ":: Type 'sway' to launch."
+echo ":: PRODUCTION INSTALL COMPLETE."
+echo ":: TTY = Bash | Foot = Fish"
 echo ":: ---------------------------------------------------"
