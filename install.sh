@@ -11,16 +11,14 @@ fi
 # ==============================================================================
 # 1. INSTALLATION
 # ==============================================================================
-echo ":: [1/4] Installing Packages..."
+echo ":: [1/3] Installing Packages..."
 
-# Core Wayland (Added xorg-xwayland to fix startup crash)
+# Core Wayland (Includes Xwayland to prevent crashes)
 PACKAGES="sway swaybg foot fuzzel mako xorg-xwayland \
 pipewire pipewire-pulse wireplumber pamixer \
 wob wf-recorder btop"
 
-# CLIPBOARD (The 100% Fix)
-# wl-clipboard: The actual copy/paste tool
-# cliphist: The history manager that keeps items in memory
+# CLIPBOARD MANAGER (Critical for Persistence)
 PACKAGES+=" wl-clipboard cliphist"
 
 # GPU Drivers (AMD RX 6400)
@@ -33,9 +31,9 @@ tumbler ffmpegthumbnailer poppler-glib"
 # Media Codecs
 PACKAGES+=" ffmpeg gstreamer gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
 
-# System Tools (Fixes your Python/DBus errors)
+# System Tools (Fixes Python/DBus/Tray errors)
 # python-gobject: Fixes powerprofilesctl crash
-# libappindicator-gtk3: Fixes udiskie tray icon warning
+# libappindicator-gtk3: Fixes udiskie tray icon crash
 PACKAGES+=" polkit-gnome power-profiles-daemon python-gobject glib2 libnotify libappindicator-gtk3"
 
 # Portals (Screen Sharing)
@@ -52,7 +50,7 @@ sudo pacman -S --needed --noconfirm $PACKAGES
 # ==============================================================================
 # 2. AUR ESSENTIALS
 # ==============================================================================
-echo ":: [2/4] Installing AUR Tools..."
+echo ":: [2/3] Installing AUR Tools..."
 
 if ! command -v yay &> /dev/null; then
     sudo pacman -S --needed --noconfirm base-devel git
@@ -64,7 +62,7 @@ yay -S --noconfirm librewolf-bin fastfetch
 # ==============================================================================
 # 3. CRITICAL BINARY & SHELL FIXES
 # ==============================================================================
-echo ":: [3/4] Applying Fixes..."
+echo ":: [3/3] Configuration..."
 
 # FIX: Zed Binary Name
 if [ -f /usr/bin/zeditor ]; then
@@ -75,10 +73,7 @@ fi
 echo ":: Resetting system shell to Bash..."
 sudo chsh -s /bin/bash $(whoami)
 
-# ==============================================================================
-# 4. CONFIGURATION
-# ==============================================================================
-echo ":: [4/4] Writing Configurations..."
+# CONFIG DIRS
 mkdir -p ~/.config/{sway,foot,fuzzel,fish,mako,wob}
 mkdir -p ~/.local/bin
 mkdir -p ~/Pictures/Wallpapers
@@ -101,7 +96,6 @@ chmod +x ~/.local/bin/audio-selector.sh
 cat <<EOF > ~/.config/fish/config.fish
 if status is-interactive
     set fish_greeting
-    
     alias ls='eza -al --icons --group-directories-first'
     alias ll='eza -l --icons --group-directories-first'
 
@@ -270,9 +264,10 @@ bar {
     }
 }
 
-# --- Audio (Wob) ---
+# --- Audio (Wob with Crash Fix) ---
+# We force remove the old socket to prevent 'broken pipe' errors on reload
 set \$WOBSOCK \$XDG_RUNTIME_DIR/wob.sock
-exec mkfifo \$WOBSOCK && tail -f \$WOBSOCK | wob
+exec rm -f \$WOBSOCK && mkfifo \$WOBSOCK && tail -f \$WOBSOCK | wob
 bindsym \$mod+equal exec pamixer -i 5 && pamixer --get-volume > \$WOBSOCK
 bindsym \$mod+minus exec pamixer -d 5 && pamixer --get-volume > \$WOBSOCK
 
@@ -293,7 +288,7 @@ bindsym \$mod+a exec ~/.local/bin/audio-selector.sh
 bindsym \$mod+Shift+r exec ~/.local/bin/record-screen.sh
 
 # Screenshots (SAVES TO CLIPBOARD)
-# We pipe the image data into 'wl-copy'. This puts it in the clipboard buffer.
+# We pipe to 'wl-copy'. This sends it to the Clipboard Manager.
 bindsym \$mod+p exec grim - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Saved & Copied"
 bindsym \$mod+Shift+s exec grim -g "\$(slurp)" - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Saved & Copied"
 
@@ -327,16 +322,15 @@ bindsym \$mod+Shift+3 move container to workspace 3
 bindsym \$mod+Shift+4 move container to workspace 4
 bindsym \$mod+Shift+5 move container to workspace 5
 
-# --- Autostart (Correct Order) ---
+# --- Autostart (Order Critical for Persistence) ---
 # 1. DBus Import (Fixes Mako & Portals)
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway
 
 # 2. Polkit
 exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 
-# 3. CLIPBOARD MANAGER (Fixes Broken Paste)
-# Stores history so it doesn't disappear when you close an app
-exec wl-paste --watch cliphist store
+# 3. CLIPBOARD MANAGER (Wait 1s for socket to be ready)
+exec sleep 1 && wl-paste --watch cliphist store
 
 # 4. Other Services
 exec udiskie --tray
@@ -378,7 +372,8 @@ systemctl --user enable --now wireplumber.service pipewire-pulse.service
 
 echo ":: ---------------------------------------------------"
 echo ":: INSTALL COMPLETE."
-echo ":: Xwayland Installed (Fixes startup error)."
-echo ":: Python GObject Installed (Fixes power error)."
-echo ":: Clipboard Manager Active (Fixes paste)."
+echo ":: 1. Wob Pipe Crash: FIXED (rm -f socket)"
+echo ":: 2. Xwayland Crash: FIXED (pkg installed)"
+echo ":: 3. Tray Icon Crash: FIXED (libappindicator)"
+echo ":: 4. Clipboard: FIXED (wl-clipboard + start delay)"
 echo ":: ---------------------------------------------------"
