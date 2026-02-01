@@ -1,0 +1,15 @@
+window {
+    /* Use your wallpaper as the background */
+    background-image: url("~/Pictures/Wallpapers/classroom.jpg");
+    background-size: cover;
+    background-position: center;
+}
+
+#input-field {
+    background-color: #282828;
+    border: 2px solid #d79921;
+    border-radius: 10px;
+    color: #ebdbb2;
+    padding: 10px;
+    margin-top: 50px;
+}
