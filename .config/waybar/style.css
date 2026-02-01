@@ -1,0 +1,51 @@
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "JetBrainsMono Nerd Font";
+    font-size: 14px;
+    min-height: 0;
+}
+
+window#waybar {
+    background-color: rgba(40, 40, 40, 0.85); /* Dark semi-transparent */
+    color: #ebdbb2;
+    border-radius: 50px; /* The "Pill" shape */
+}
+
+/* --- Workspaces (Omarchy Style) --- */
+#workspaces {
+    padding: 0 15px;
+}
+
+#workspaces button {
+    padding: 0 8px;
+    color: #a89984; /* Dimmed */
+    background: transparent;
+    font-weight: bold;
+}
+
+#workspaces button.focused {
+    color: #ccac56; /* Gold/Yellow active */
+}
+
+#workspaces button.urgent {
+    color: #cc241d; /* Red */
+}
+
+#workspaces button:hover {
+    color: #ebdbb2; /* White/Cream on hover */
+}
+
+/* --- Center Media --- */
+#custom-media {
+    color: #ccac56;
+    font-weight: bold;
+    padding: 0 15px;
+}
+
+/* --- Right Clock --- */
+#clock {
+    color: #ebdbb2;
+    padding: 0 20px;
+    font-weight: bold;
+}
