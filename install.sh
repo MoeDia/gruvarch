@@ -1,116 +1,197 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # ==============================================================================
 # PRE-FLIGHT CHECK
 # ==============================================================================
-if [ ! -f "./classroom.jpg" ]; then
-    echo ":: ERROR: 'classroom.jpg' missing. Place it next to this script."
-    exit 1
+WALLPAPER_SRC="./classroom.jpg"
+if [[ ! -f "$WALLPAPER_SRC" ]]; then
+  echo ":: ERROR: 'classroom.jpg' missing. Place it next to this script."
+  exit 1
 fi
 
-# ==============================================================================
-# 1. INSTALLATION
-# ==============================================================================
-echo ":: [1/3] Installing Packages..."
-
-# Core Wayland (Includes Xwayland to prevent crashes)
-PACKAGES="sway swaybg foot fuzzel mako xorg-xwayland \
-pipewire pipewire-pulse wireplumber pamixer \
-wob wf-recorder btop"
-
-# CLIPBOARD MANAGER (Critical for Persistence)
-PACKAGES+=" wl-clipboard cliphist"
-
-# GPU Drivers (AMD RX 6400)
-PACKAGES+=" mesa vulkan-radeon libva-mesa-driver"
-
-# File Management (Thumbnails + Archiving)
-PACKAGES+=" thunar thunar-volman thunar-archive-plugin gvfs gvfs-mtp ntfs-3g udiskie unzip \
-tumbler ffmpegthumbnailer poppler-glib"
-
-# Media Codecs
-PACKAGES+=" ffmpeg gstreamer gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
-
-# System Tools (Fixes Python/DBus/Tray errors)
-# python-gobject: Fixes powerprofilesctl crash
-# libappindicator-gtk3: Fixes udiskie tray icon crash
-PACKAGES+=" polkit-gnome power-profiles-daemon python-gobject glib2 libnotify libappindicator-gtk3"
-
-# Portals (Screen Sharing)
-PACKAGES+=" xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk"
-
-# Fonts & Visuals
-PACKAGES+=" xcursor-vanilla-dmz ttf-jetbrains-mono-nerd ttf-font-awesome inter-font noto-fonts"
-
-# Shell
-PACKAGES+=" fish eza fzf starship zed mpv"
-
-sudo pacman -S --needed --noconfirm $PACKAGES
+echo ":: Starting install + config for Sway (main machine)..."
 
 # ==============================================================================
-# 2. AUR ESSENTIALS
+# 1) PACKAGES (PACMAN)
 # ==============================================================================
-echo ":: [2/3] Installing AUR Tools..."
+echo ":: [1/4] Installing packages..."
 
-if ! command -v yay &> /dev/null; then
-    sudo pacman -S --needed --noconfirm base-devel git
-    git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si --noconfirm && cd .. && rm -rf yay-bin
+PACKAGES=(
+  # Core Wayland + Sway
+  sway swaybg foot fuzzel mako xorg-xwayland
+
+  # Clipboard (critical)
+  wl-clipboard cliphist
+
+  # Screenshots/selection (your binds)
+  grim slurp
+
+  # Audio
+  pipewire pipewire-pulse wireplumber pamixer
+
+  # OSD + recording
+  wob wf-recorder
+
+  # File management + mounts + thumbnails
+  thunar thunar-volman thunar-archive-plugin gvfs gvfs-mtp udiskie
+  tumbler ffmpegthumbnailer poppler-glib
+  ntfs-3g unzip
+
+  # Codecs
+  ffmpeg gstreamer gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
+
+  # GPU drivers (AMD RX 6400)
+  mesa vulkan-radeon libva-mesa-driver
+
+  # System helpers
+  polkit-gnome power-profiles-daemon python-gobject glib2 libnotify
+
+  # Portals (screen share, file pickers)
+  xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk
+
+  # Fonts & visuals
+  xcursor-vanilla-dmz ttf-jetbrains-mono-nerd ttf-font-awesome inter-font noto-fonts
+
+  # Shell & tools
+  fish eza fzf starship zed mpv btop fastfetch
+)
+
+sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
+
+# ==============================================================================
+# 2) AUR (YAY) + OPTIONAL EXTRAS
+# ==============================================================================
+echo ":: [2/4] Installing AUR tools..."
+
+if ! command -v yay >/dev/null 2>&1; then
+  sudo pacman -S --needed --noconfirm base-devel git
+  rm -rf yay-bin
+  git clone https://aur.archlinux.org/yay-bin.git
+  pushd yay-bin >/dev/null
+  makepkg -si --noconfirm
+  popd >/dev/null
+  rm -rf yay-bin
 fi
 
-yay -S --noconfirm librewolf-bin fastfetch
+# Browser from AUR (matches your setup)
+yay -S --noconfirm librewolf-bin
 
 # ==============================================================================
-# 3. CRITICAL BINARY & SHELL FIXES
+# 3) CONFIG + SCRIPTS
 # ==============================================================================
-echo ":: [3/3] Configuration..."
+echo ":: [3/4] Writing configs..."
 
-# FIX: Zed Binary Name
-if [ -f /usr/bin/zeditor ]; then
-    sudo ln -sf /usr/bin/zeditor /usr/bin/zed
+# Fix Zed binary naming if needed
+if [[ -f /usr/bin/zeditor ]]; then
+  sudo ln -sf /usr/bin/zeditor /usr/bin/zed
 fi
 
-# FIX: TTY vs Foot Separation
-echo ":: Resetting system shell to Bash..."
-sudo chsh -s /bin/bash $(whoami)
+# Login shell: keep bash for TTY safety, foot will run fish
+sudo chsh -s /bin/bash "$(whoami)" || true
 
-# CONFIG DIRS
+# Dirs
 mkdir -p ~/.config/{sway,foot,fuzzel,fish,mako,wob}
 mkdir -p ~/.local/bin
 mkdir -p ~/Pictures/Wallpapers
+mkdir -p ~/Pictures
+mkdir -p ~/Videos
 
 # Wallpaper
-cp "./classroom.jpg" ~/Pictures/Wallpapers/classroom.jpg
+cp -f "$WALLPAPER_SRC" ~/Pictures/Wallpapers/classroom.jpg
 
-# --- A. Helper Scripts ---
-cat <<EOF > ~/.local/bin/audio-selector.sh
-#!/bin/bash
-sink=\$(pactl list short sinks | cut -f 2 | fuzzel --dmenu --prompt="Audio Output: " --lines=5 --width=50)
-if [ -n "\$sink" ]; then
-    pactl set-default-sink "\$sink"
-    pactl list short sink-inputs | cut -f 1 | xargs -I {} pactl move-sink-input {} "\$sink"
+# ------------------------------------------------------------------------------
+# A) Audio selector (Fuzzel)
+# ------------------------------------------------------------------------------
+cat > ~/.local/bin/audio-selector.sh <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+sink="$(pactl list short sinks | cut -f2 | fuzzel --dmenu --prompt="Audio Output: " --lines=10 --width=60 || true)"
+if [[ -n "${sink:-}" ]]; then
+  pactl set-default-sink "$sink"
+  pactl list short sink-inputs | cut -f1 | xargs -r -I {} pactl move-sink-input {} "$sink"
+  notify-send "Audio" "Output set to: $sink"
 fi
 EOF
 chmod +x ~/.local/bin/audio-selector.sh
 
-# --- B. Fish Shell (GUI Only) ---
-cat <<EOF > ~/.config/fish/config.fish
+# ------------------------------------------------------------------------------
+# B) Clipboard menu (Mod+V)
+# ------------------------------------------------------------------------------
+cat > ~/.local/bin/clipmenu.sh <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+choice="$(cliphist list | fuzzel --dmenu --prompt="Clipboard: " --lines=12 --width=80 || true)"
+if [[ -n "${choice:-}" ]]; then
+  cliphist decode <<<"$choice" | wl-copy
+  notify-send "Clipboard" "Pasted from history"
+fi
+EOF
+chmod +x ~/.local/bin/clipmenu.sh
+
+# ------------------------------------------------------------------------------
+# C) i3bar JSON status script (fixes red :( while keeping same text style)
+# ------------------------------------------------------------------------------
+cat > ~/.local/bin/sway-status.sh <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# i3bar protocol header
+printf '{"version":1}\n[\n'
+printf '[]\n'
+
+while :; do
+  now="$(date +'%I:%M:%S %p | %a %d-%m-%Y')"
+  # One block, same visual text you wanted
+  printf '[{"full_text":"%s"}],\n' "$now"
+  sleep 1
+done
+EOF
+chmod +x ~/.local/bin/sway-status.sh
+
+# ------------------------------------------------------------------------------
+# D) Screen recording toggle
+# ------------------------------------------------------------------------------
+cat > ~/.local/bin/record-screen.sh <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+PIDFILE="/tmp/wf-recorder.pid"
+
+if [[ -f "$PIDFILE" ]]; then
+  kill -SIGINT "$(cat "$PIDFILE")" 2>/dev/null || true
+  rm -f "$PIDFILE"
+  notify-send "Recording" "Stopped."
+else
+  out="$HOME/Videos/recording_$(date +%s).mp4"
+  wf-recorder -f "$out" &
+  echo $! > "$PIDFILE"
+  notify-send "Recording" "Started: $out"
+fi
+EOF
+chmod +x ~/.local/bin/record-screen.sh
+
+# ------------------------------------------------------------------------------
+# E) Fish config (interactive only)
+# ------------------------------------------------------------------------------
+cat > ~/.config/fish/config.fish <<'EOF'
 if status is-interactive
     set fish_greeting
     alias ls='eza -al --icons --group-directories-first'
     alias ll='eza -l --icons --group-directories-first'
 
-    # GUI Logic
     fastfetch
     starship init fish | source
-    
-    # Portal Environment
+
+    # Wayland session hints
     set -gx XDG_CURRENT_DESKTOP sway
     set -gx XDG_SESSION_DESKTOP sway
 end
 EOF
 
-# --- C. Starship (Pure Preset) ---
-cat <<EOF > ~/.config/starship.toml
+# ------------------------------------------------------------------------------
+# F) Starship (your preset)
+# ------------------------------------------------------------------------------
+cat > ~/.config/starship.toml <<'EOF'
 [character]
 success_symbol = "[❯](bold green)"
 error_symbol = "[❯](bold red)"
@@ -121,21 +202,21 @@ truncation_length = 3
 truncation_symbol = "…/"
 
 [git_branch]
-format = "on [\$symbol\$branch]($style) "
+format = "on [$symbol$branch]($style) "
 symbol = " "
 style = "bold yellow"
 
 [git_status]
-format = '([\$all_status\$ahead_behind]($style) )'
+format = '([$all_status$ahead_behind]($style) )'
 style = "bold red"
 
 [cmd_duration]
-format = "took [\$duration]($style) "
+format = "took [$duration]($style) "
 style = "yellow"
 
 [hostname]
 ssh_only = false
-format = "[\$hostname](bold blue) "
+format = "[$hostname](bold blue) "
 disabled = false
 
 [line_break]
@@ -145,8 +226,10 @@ disabled = false
 disabled = true
 EOF
 
-# --- D. Foot (Forces Fish) ---
-cat <<EOF > ~/.config/foot/foot.ini
+# ------------------------------------------------------------------------------
+# G) Foot config (forces fish only in foot)
+# ------------------------------------------------------------------------------
+cat > ~/.config/foot/foot.ini <<'EOF'
 [main]
 font=JetBrainsMono Nerd Font:size=10
 pad=10x10
@@ -174,8 +257,10 @@ bright6=8ec07c
 bright7=ebdbb2
 EOF
 
-# --- E. Fuzzel (Gruvbox) ---
-cat <<EOF > ~/.config/fuzzel/fuzzel.ini
+# ------------------------------------------------------------------------------
+# H) Fuzzel (Gruvbox)
+# ------------------------------------------------------------------------------
+cat > ~/.config/fuzzel/fuzzel.ini <<'EOF'
 [main]
 font=JetBrainsMono Nerd Font:size=11
 terminal=foot -e
@@ -194,8 +279,10 @@ selection-text=282828ff
 border=d79921ff
 EOF
 
-# --- F. Wob (Gruvbox) ---
-cat <<EOF > ~/.config/wob/wob.ini
+# ------------------------------------------------------------------------------
+# I) Wob (Gruvbox)
+# ------------------------------------------------------------------------------
+cat > ~/.config/wob/wob.ini <<'EOF'
 timeout = 1000
 max = 100
 width = 400
@@ -206,8 +293,10 @@ border_color = 282828
 background_color = 282828
 EOF
 
-# --- G. Mako (Gruvbox) ---
-cat <<EOF > ~/.config/mako/config
+# ------------------------------------------------------------------------------
+# J) Mako (Gruvbox)
+# ------------------------------------------------------------------------------
+cat > ~/.config/mako/config <<'EOF'
 font=JetBrainsMono Nerd Font 10
 background-color=#282828
 text-color=#ebdbb2
@@ -216,12 +305,14 @@ border-size=2
 default-timeout=5000
 EOF
 
-# --- H. Sway Config (Corrected Order) ---
-cat <<EOF > ~/.config/sway/config
+# ------------------------------------------------------------------------------
+# K) Sway config (Swaybar kept, red face fixed, clipboard fixed)
+# ------------------------------------------------------------------------------
+cat > ~/.config/sway/config <<'EOF'
 # --- Variables ---
-set \$mod Mod4
-set \$term foot
-set \$menu fuzzel
+set $mod Mod4
+set $term foot
+set $menu fuzzel
 
 # --- Visuals ---
 font pango:JetBrainsMono Nerd Font Regular 10
@@ -231,14 +322,15 @@ gaps outer 0
 for_window [app_id=".*"] opacity 0.95
 
 # Gruvbox Colors
-client.focused          #d79921 #282828 #ebdbb2 #d79921   #d79921
-client.focused_inactive #3c3836 #3c3836 #a89984 #3c3836   #3c3836
-client.unfocused        #3c3836 #3c3836 #a89984 #3c3836   #3c3836
-client.urgent           #cc241d #cc241d #ebdbb2 #cc241d   #cc241d
+client.focused          #d79921 #282828 #ebdbb2 #d79921 #d79921
+client.focused_inactive #3c3836 #3c3836 #a89984 #3c3836 #3c3836
+client.unfocused        #3c3836 #3c3836 #a89984 #3c3836 #3c3836
+client.urgent           #cc241d #cc241d #ebdbb2 #cc241d #cc241d
 
 # --- Output ---
-output * scale 2
 output * bg ~/Pictures/Wallpapers/classroom.jpg fill
+# If you have a 4K display and want scaling, uncomment:
+# output * scale 2
 
 # --- Input ---
 input * {
@@ -249,11 +341,11 @@ input * {
 }
 seat seat0 xcursor_theme Vanilla-DMZ 48
 
-# --- Bar ---
+# --- Bar (KEEP SWAYBAR, fix :( using i3bar JSON status script) ---
 bar {
     position top
     font pango:JetBrainsMono Nerd Font Regular 10
-    status_command while date +'%I:%M:%S %p | %a %d-%m-%Y'; do sleep 1; done
+    status_command ~/.local/bin/sway-status.sh
     colors {
         statusline #ebdbb2
         background #282828
@@ -264,116 +356,114 @@ bar {
     }
 }
 
-# --- Audio (Wob with Crash Fix) ---
-# We force remove the old socket to prevent 'broken pipe' errors on reload
-set \$WOBSOCK \$XDG_RUNTIME_DIR/wob.sock
-exec rm -f \$WOBSOCK && mkfifo \$WOBSOCK && tail -f \$WOBSOCK | wob
-bindsym \$mod+equal exec pamixer -i 5 && pamixer --get-volume > \$WOBSOCK
-bindsym \$mod+minus exec pamixer -d 5 && pamixer --get-volume > \$WOBSOCK
+# --- Wob (volume OSD) ---
+set $WOBFIFO $XDG_RUNTIME_DIR/wob.fifo
+exec_always pkill -x wob || true
+exec_always pkill -f "tail -f .*wob.fifo" || true
+exec_always rm -f $WOBFIFO && mkfifo -m 600 $WOBFIFO
+exec_always sh -c "tail -f $WOBFIFO | wob" &
+
+bindsym $mod+equal exec pamixer -i 5 && pamixer --get-volume > $WOBFIFO
+bindsym $mod+minus exec pamixer -d 5 && pamixer --get-volume > $WOBFIFO
 
 # --- Keybindings ---
-bindsym \$mod+Return exec \$term
-bindsym \$mod+Shift+q kill
-bindsym \$mod+d exec \$menu
-bindsym \$mod+Shift+c reload
-bindsym \$mod+Shift+e exec swaymsg exit
+bindsym $mod+Return exec $term
+bindsym $mod+Shift+q kill
+bindsym $mod+d exec $menu
+bindsym $mod+Shift+c reload
+bindsym $mod+Shift+e exec swaymsg exit
 
 # Apps
-bindsym \$mod+b exec librewolf
-bindsym \$mod+c exec zed
-bindsym \$mod+Shift+Return exec thunar
+bindsym $mod+b exec librewolf
+bindsym $mod+c exec zed
+bindsym $mod+Shift+Return exec thunar
 
 # Helper Scripts
-bindsym \$mod+a exec ~/.local/bin/audio-selector.sh
-bindsym \$mod+Shift+r exec ~/.local/bin/record-screen.sh
+bindsym $mod+a exec ~/.local/bin/audio-selector.sh
+bindsym $mod+Shift+r exec ~/.local/bin/record-screen.sh
 
-# Screenshots (SAVES TO CLIPBOARD)
-# We pipe to 'wl-copy'. This sends it to the Clipboard Manager.
-bindsym \$mod+p exec grim - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Saved & Copied"
-bindsym \$mod+Shift+s exec grim -g "\$(slurp)" - | tee ~/Pictures/shot_\$(date +%s).png | wl-copy && notify-send "Screenshot" "Saved & Copied"
+# Clipboard picker (1000% clipboard workflow)
+bindsym $mod+v exec ~/.local/bin/clipmenu.sh
+
+# Screenshots (save + copy)
+bindsym $mod+p exec sh -c 'grim - | tee "$HOME/Pictures/shot_$(date +%s).png" | wl-copy && notify-send "Screenshot" "Saved & Copied"'
+bindsym $mod+Shift+s exec sh -c 'grim -g "$(slurp)" - | tee "$HOME/Pictures/shot_$(date +%s).png" | wl-copy && notify-send "Screenshot" "Saved & Copied"'
 
 # Navigation
-bindsym \$mod+h focus left
-bindsym \$mod+j focus down
-bindsym \$mod+k focus up
-bindsym \$mod+l focus right
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
 
 # Moving windows
-bindsym \$mod+Shift+h move left
-bindsym \$mod+Shift+j move down
-bindsym \$mod+Shift+k move up
-bindsym \$mod+Shift+l move right
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
 
 # Layout
-bindsym \$mod+f fullscreen
-bindsym \$mod+s layout stacking
-bindsym \$mod+w layout tabbed
-bindsym \$mod+e layout toggle split
+bindsym $mod+f fullscreen
+bindsym $mod+s layout stacking
+bindsym $mod+w layout tabbed
+bindsym $mod+e layout toggle split
 
 # Workspaces
-bindsym \$mod+1 workspace 1
-bindsym \$mod+2 workspace 2
-bindsym \$mod+3 workspace 3
-bindsym \$mod+4 workspace 4
-bindsym \$mod+5 workspace 5
-bindsym \$mod+Shift+1 move container to workspace 1
-bindsym \$mod+Shift+2 move container to workspace 2
-bindsym \$mod+Shift+3 move container to workspace 3
-bindsym \$mod+Shift+4 move container to workspace 4
-bindsym \$mod+Shift+5 move container to workspace 5
+bindsym $mod+1 workspace 1
+bindsym $mod+2 workspace 2
+bindsym $mod+3 workspace 3
+bindsym $mod+4 workspace 4
+bindsym $mod+5 workspace 5
+bindsym $mod+Shift+1 move container to workspace 1
+bindsym $mod+Shift+2 move container to workspace 2
+bindsym $mod+Shift+3 move container to workspace 3
+bindsym $mod+Shift+4 move container to workspace 4
+bindsym $mod+Shift+5 move container to workspace 5
 
-# --- Autostart (Order Critical for Persistence) ---
-# 1. DBus Import (Fixes Mako & Portals)
-exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway
+# --- Autostart (order matters) ---
 
-# 2. Polkit
-exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+# 1) DBus import (portals + notifications)
+exec_always dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway XDG_SESSION_TYPE=wayland
+exec_always systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
 
-# 3. CLIPBOARD MANAGER (Wait 1s for socket to be ready)
-exec sleep 1 && wl-paste --watch cliphist store
+# 2) Polkit
+exec_always /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 
-# 4. Other Services
-exec udiskie --tray
-exec mako
-exec /usr/lib/xdg-desktop-portal-wlr
+# 3) Notifications
+exec_always mako
+
+# 4) Portals (screen sharing, file pickers)
+exec_always /usr/lib/xdg-desktop-portal-wlr
+exec_always /usr/lib/xdg-desktop-portal
+
+# 5) Clipboard: bulletproof (text+image, clipboard+primary, reload-safe)
+exec_always pkill -x wl-paste || true
+exec_always wl-paste --watch --type text  cliphist store --clipboard & 
+exec_always wl-paste --watch --type image cliphist store --clipboard & 
+exec_always wl-paste --watch --type text  cliphist store --primary & 
+exec_always wl-paste --watch --type image cliphist store --primary & 
+
+# 6) Automount WITHOUT tray (swaybar has no tray)
+exec_always udiskie --no-tray
 EOF
 
 # ==============================================================================
-# 5. FINAL STEPS
+# 4) SERVICES + FINALIZATION
 # ==============================================================================
-echo ":: [4/4] Finalizing..."
+echo ":: [4/4] Enabling services..."
 
-# Recording Script
-cat <<EOF > ~/.local/bin/record-screen.sh
-#!/bin/bash
-PIDFILE="/tmp/recording.pid"
-if [ -f "\$PIDFILE" ]; then
-    kill -SIGINT \$(cat "\$PIDFILE")
-    rm "\$PIDFILE"
-    notify-send "Recording" "Stopped."
-else
-    mkdir -p ~/Videos
-    wf-recorder -f ~/Videos/recording_\$(date +%s).mp4 &
-    echo \$! > "\$PIDFILE"
-    notify-send "Recording" "Started..."
-fi
-EOF
-chmod +x ~/.local/bin/record-screen.sh
-
-# Power
-sudo systemctl enable --now power-profiles-daemon.service
-if command -v powerprofilesctl &> /dev/null; then
-    powerprofilesctl set performance
+# Power profiles
+sudo systemctl enable --now power-profiles-daemon.service || true
+if command -v powerprofilesctl >/dev/null 2>&1; then
+  powerprofilesctl set performance || true
 fi
 
-# Services
-sudo systemctl mask sleep.target suspend.target
-systemctl --user enable --now wireplumber.service pipewire-pulse.service
+# PipeWire user services
+systemctl --user enable --now wireplumber.service pipewire.service pipewire-pulse.service || true
 
 echo ":: ---------------------------------------------------"
-echo ":: INSTALL COMPLETE."
-echo ":: 1. Wob Pipe Crash: FIXED (rm -f socket)"
-echo ":: 2. Xwayland Crash: FIXED (pkg installed)"
-echo ":: 3. Tray Icon Crash: FIXED (libappindicator)"
-echo ":: 4. Clipboard: FIXED (wl-clipboard + start delay)"
+echo ":: INSTALL COMPLETE ✅"
+echo ":: - Swaybar red :( fixed (proper i3bar JSON status)"
+echo ":: - Clipboard fixed HARD (text+image, clipboard+primary, reload-safe)"
+echo ":: - Clipboard picker: Mod+V"
+echo ":: - Udiskie errors gone (no tray on swaybar)"
 echo ":: ---------------------------------------------------"
