@@ -14,7 +14,6 @@ fi
 echo ":: [1/4] Installing Production Packages..."
 
 # Core Wayland & Audio
-# Added 'btop' here
 PACKAGES="sway swaybg foot fuzzel mako \
 pipewire pipewire-pulse wireplumber pamixer \
 wl-clipboard grim slurp imv \
@@ -23,8 +22,12 @@ wob wf-recorder btop"
 # GPU Drivers (AMD RX 6400 Specific)
 PACKAGES+=" mesa vulkan-radeon libva-mesa-driver"
 
-# File Management
-PACKAGES+=" thunar thunar-volman thunar-archive-plugin gvfs gvfs-mtp ntfs-3g udiskie unzip"
+# File Management (Now with THUMBNAILS)
+# 'tumbler' = The thumbnail engine
+# 'ffmpegthumbnailer' = Video thumbnails
+# 'poppler-glib' = PDF thumbnails
+PACKAGES+=" thunar thunar-volman thunar-archive-plugin gvfs gvfs-mtp ntfs-3g udiskie unzip \
+tumbler ffmpegthumbnailer poppler-glib"
 
 # Media Codecs
 PACKAGES+=" ffmpeg gstreamer gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
@@ -57,22 +60,17 @@ fi
 yay -S --noconfirm librewolf-bin fastfetch
 
 # ==============================================================================
-# 3. CRITICAL BINARY & SHELL FIXES (The "10000% Sure" Way)
+# 3. CRITICAL BINARY & SHELL FIXES
 # ==============================================================================
 echo ":: [3/4] Applying Binary & Shell Fixes..."
 
 # FIX 1: Zed Binary Name
-# Arch installs it as 'zeditor'. We FORCE a symlink to 'zed' so commands work.
 if [ -f /usr/bin/zeditor ]; then
     echo ":: Fixing Zed binary..."
     sudo ln -sf /usr/bin/zeditor /usr/bin/zed
-else
-    echo ":: WARNING: Zed binary not found. Is the package installed?"
 fi
 
 # FIX 2: TTY vs Foot Separation
-# We FORCE the system default shell back to BASH.
-# This ensures TTY (Ctrl+Alt+F1) is always Bash.
 echo ":: Resetting system shell to Bash (for TTY)..."
 sudo chsh -s /bin/bash $(whoami)
 
@@ -99,7 +97,6 @@ EOF
 chmod +x ~/.local/bin/audio-selector.sh
 
 # --- B. Fish Shell (SIMPLIFIED) ---
-# Since we forced TTY to Bash, we assume ANY instance of Fish is running in GUI/Foot.
 cat <<EOF > ~/.config/fish/config.fish
 if status is-interactive
     set fish_greeting
@@ -374,7 +371,6 @@ systemctl --user enable --now wireplumber.service pipewire-pulse.service
 
 echo ":: ---------------------------------------------------"
 echo ":: INSTALL COMPLETE."
-echo ":: TTY = Bash (Fixed)"
-echo ":: Terminal = Fish (Fixed)"
-echo ":: Zed Editor = Linked & Ready"
+echo ":: Tumbler & FFmpegthumbnailer installed."
+echo ":: Thumbnails will now appear in Thunar."
 echo ":: ---------------------------------------------------"
