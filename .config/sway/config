@@ -56,6 +56,9 @@ bindsym $mod+d exec $menu
 bindsym $mod+Shift+c reload
 bindsym $mod+Shift+e exec swaymsg exit
 
+# -- Screen Recording (Super + Shift + R) --
+bindsym $mod+Shift+r exec ~/.local/bin/record-screen.sh
+
 # -- Audio Selector (Super + A) --
 bindsym $mod+a exec ~/.local/bin/audio-selector.sh
 
