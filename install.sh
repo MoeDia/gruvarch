@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# PRE-FLIGHT
+# PRE-FLIGHT CHECK
 # ==============================================================================
 if [ ! -f "./classroom.jpg" ]; then
     echo ":: ERROR: 'classroom.jpg' missing. Place it next to this script."
@@ -9,30 +9,30 @@ if [ ! -f "./classroom.jpg" ]; then
 fi
 
 # ==============================================================================
-# CHUNK 1: CORE PACKAGES & CODECS
+# 1. OPTIMIZED INSTALLATION
 # ==============================================================================
-echo ":: [1/4] Installing Optimized Core..."
+echo ":: [1/5] Installing Optimized Packages..."
 
-# Core Desktop
+# Core Wayland & Audio (Wob added)
 PACKAGES="sway swaybg foot fuzzel mako \
 pipewire pipewire-pulse wireplumber pamixer \
 wl-clipboard grim slurp imv \
 wob wf-recorder"
 
-# File Management (Thunar + Archives + Drives)
+# File Management (Thunar + Archives + Drives + NTFS)
 PACKAGES+=" thunar thunar-volman thunar-archive-plugin gvfs gvfs-mtp ntfs-3g udiskie unzip"
 
 # Media Codecs (Comprehensive)
 PACKAGES+=" ffmpeg gstreamer gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
 
-# System Internals
-PACKAGES+=" polkit-gnome power-profiles-daemon python-gobject glib2 libnotify"
+# System Tools (Polkit, Power, Python for utils)
+PACKAGES+=" polkit-gnome power-profiles-daemon python-gobject glib2 libnotify imagemagick"
 
-# Fonts & Visuals (No Terminus)
+# Fonts & Visuals (JetBrains Nerd Font, etc.)
 PACKAGES+=" xcursor-vanilla-dmz ttf-jetbrains-mono-nerd ttf-font-awesome inter-font noto-fonts"
 
-# Shell & Tools
-PACKAGES+=" fish eza fzf starship zed mpv imagemagick"
+# Shell & Utilities
+PACKAGES+=" fish eza fzf starship zed mpv"
 
 sudo pacman -S --needed --noconfirm $PACKAGES
 
@@ -41,87 +41,189 @@ if ! command -v reflector &> /dev/null; then sudo pacman -S --noconfirm reflecto
 sudo reflector --latest 5 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
 # ==============================================================================
-# CHUNK 2: AUR ESSENTIALS
+# 2. AUR ESSENTIALS
 # ==============================================================================
-echo ":: [2/4] Installing AUR Tools..."
+echo ":: [2/5] Installing AUR Tools..."
 
 if ! command -v yay &> /dev/null; then
     sudo pacman -S --needed --noconfirm base-devel git
     git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si --noconfirm && cd .. && rm -rf yay-bin
 fi
 
-# gtklock: The lockscreen
-# fastfetch: System info
+# gtklock: Lockscreen
+# fastfetch: System Info
 # librewolf-bin: Browser
 yay -S --noconfirm librewolf-bin gtklock fastfetch
 
 # ==============================================================================
-# CHUNK 3: CONFIGURATION
+# 3. VISUAL PREP (Wallpaper & Blur)
 # ==============================================================================
-echo ":: [3/4] Configuring Functionality..."
-
-# 1. Prepare Directories
-mkdir -p ~/.config/{sway,foot,fuzzel,fish,mako,gtklock}
-mkdir -p ~/.local/bin
+echo ":: [3/5] Setting up Visuals..."
 mkdir -p ~/Pictures/Wallpapers
-
-# 2. Wallpaper
 cp "./classroom.jpg" ~/Pictures/Wallpapers/classroom.jpg
 
-# 3. Fish Shell (TTY Separation Logic)
+# Generate blurred image for lockscreen (Sure-fire method)
+convert ~/Pictures/Wallpapers/classroom.jpg -blur 0x20 ~/Pictures/Wallpapers/lock_blurred.jpg
+
+# ==============================================================================
+# 4. CONFIGURATION
+# ==============================================================================
+echo ":: [4/5] Writing Configurations..."
+mkdir -p ~/.config/{sway,foot,fuzzel,fish,mako,gtklock,wob}
+mkdir -p ~/.local/bin
+
+# --- A. Fish Shell (TTY Separation Logic) ---
 cat <<EOF > ~/.config/fish/config.fish
 if status is-interactive
     set fish_greeting
     
-    # Common Aliases
+    # Aliases
     alias ls='eza -al --icons --group-directories-first'
     alias ll='eza -l --icons --group-directories-first'
-    
-    # Starship (Runs everywhere)
-    starship init fish | source
 
     # GUI-Only Logic (Sway)
     if set -q WAYLAND_DISPLAY
-        # Only run fastfetch in the GUI, not the TTY
+        # 1. Run Fastfetch
         fastfetch
         
-        # Sure-Fire Dark Theme Variables (GUI Only)
+        # 2. Use Starship Prompt
+        starship init fish | source
+        
+        # 3. GUI Theme Variables (Sure-fire Dark Mode)
         set -gx GTK_THEME "Gruvbox-Dark"
         set -gx QT_QPA_PLATFORMTHEME "gtk2"
         set -gx GDK_SCALE 2
         set -gx QT_SCALE_FACTOR 2
         set -gx XCURSOR_SIZE 48
+    else
+        # TTY Logic (Default Prompt, No Fancy Stuff)
+        # Keeping it clean prevents the "?" font errors
     end
 end
 EOF
 
-# 4. Starship Prompt (Hostname ALWAYS Visible)
+# --- B. Starship (Pure Preset) ---
 cat <<EOF > ~/.config/starship.toml
-[hostname]
-ssh_only = false
-format = "[\$hostname](bold blue) "
-disabled = false
-
 [character]
 success_symbol = "[❯](bold green)"
 error_symbol = "[❯](bold red)"
+vimcmd_symbol = "[❮](bold green)"
 
 [directory]
 truncation_length = 3
 truncation_symbol = "…/"
 
 [git_branch]
+format = "on [\$symbol\$branch]($style) "
 symbol = " "
 style = "bold yellow"
+
+[git_status]
+format = '([\$all_status\$ahead_behind]($style) )'
+style = "bold red"
+
+[cmd_duration]
+format = "took [\$duration]($style) "
+style = "yellow"
+
+[hostname]
+ssh_only = false
+format = "[\$hostname](bold blue) "
+disabled = false
+
+[line_break]
+disabled = false
+
+[package]
+disabled = true
 EOF
 
-# 5. Gtklock Config (Basic Gruvbox)
+# --- C. Foot (Gruvbox) ---
+cat <<EOF > ~/.config/foot/foot.ini
+[main]
+font=JetBrainsMono Nerd Font:size=10
+pad=10x10
+
+[colors]
+alpha=1.0
+background=282828
+foreground=ebdbb2
+regular0=282828
+regular1=cc241d
+regular2=98971a
+regular3=d79921
+regular4=458588
+regular5=b16286
+regular6=689d6a
+regular7=a89984
+bright0=928374
+bright1=fb4934
+bright2=b8bb26
+bright3=fabd2f
+bright4=83a598
+bright5=d3869b
+bright6=8ec07c
+bright7=ebdbb2
+EOF
+
+# --- D. Fuzzel (Gruvbox) ---
+cat <<EOF > ~/.config/fuzzel/fuzzel.ini
+[main]
+font=JetBrainsMono Nerd Font:size=11
+terminal=foot -e
+width=40
+lines=10
+horizontal-pad=20
+vertical-pad=10
+inner-pad=5
+
+[colors]
+background=282828ff
+text=ebdbb2ff
+match=fabd2fff
+selection=d79921ff
+selection-text=282828ff
+border=d79921ff
+EOF
+
+# --- E. Wob (Gruvbox Volume Bar) ---
+cat <<EOF > ~/.config/wob/wob.ini
+timeout = 1000
+max = 100
+width = 400
+height = 50
+border_size = 2
+bar_color = d79921
+border_color = 282828
+background_color = 282828
+EOF
+
+# --- F. Gtklock (Gruvbox + Blurred BG) ---
 cat <<EOF > ~/.config/gtklock/config.ini
 [main]
 gtk-theme=Gruvbox-Dark
+style=~/.config/gtklock/style.css
 EOF
 
-# 6. Sway Config (Instant Exit + Gruvbox)
+cat <<EOF > ~/.config/gtklock/style.css
+window {
+    background-image: url("$(echo ~)/Pictures/Wallpapers/lock_blurred.jpg");
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+EOF
+
+# --- G. Mako (Gruvbox Notifications) ---
+cat <<EOF > ~/.config/mako/config
+font=JetBrainsMono Nerd Font 10
+background-color=#282828
+text-color=#ebdbb2
+border-color=#d79921
+border-size=2
+default-timeout=5000
+EOF
+
+# --- H. Sway Config (Optimized) ---
 cat <<EOF > ~/.config/sway/config
 # --- Variables ---
 set \$mod Mod4
@@ -129,12 +231,25 @@ set \$term foot
 set \$menu fuzzel
 
 # --- Visuals ---
-font pango:JetBrainsMono Nerd Font 10
+font pango:JetBrainsMono Nerd Font Regular 10
 default_border pixel 2
+gaps inner 5
+gaps outer 0
+
+# Transparency (95% Opacity)
+for_window [app_id=".*"] opacity 0.95
+
+# Gruvbox Colors
+client.focused          #d79921 #282828 #ebdbb2 #d79921   #d79921
+client.focused_inactive #3c3836 #3c3836 #a89984 #3c3836   #3c3836
+client.unfocused        #3c3836 #3c3836 #a89984 #3c3836   #3c3836
+client.urgent           #cc241d #cc241d #ebdbb2 #cc241d   #cc241d
+
+# --- Output ---
 output * scale 2
 output * bg ~/Pictures/Wallpapers/classroom.jpg fill
 
-# --- Inputs ---
+# --- Input ---
 input * {
     xkb_layout "us"
     repeat_delay 300
@@ -143,17 +258,21 @@ input * {
 }
 seat seat0 xcursor_theme Vanilla-DMZ 48
 
-# --- Bar (Clean, JetBrains Font) ---
+# --- Bar (JetBrains Regular, Clean Separation) ---
 bar {
     position top
-    font pango:JetBrainsMono Nerd Font Bold 10
+    font pango:JetBrainsMono Nerd Font Regular 10
+    
+    # Format: 04:30 PM | 01-02-2026
     status_command while date +'%I:%M %p | %d-%m-%Y'; do sleep 1; done
+
     colors {
         statusline #ebdbb2
         background #282828
+        inactive_workspace #282828 #282828 #a89984
         focused_workspace  #282828 #d79921 #282828
         active_workspace   #282828 #3c3836 #ebdbb2
-        inactive_workspace #282828 #282828 #a89984
+        urgent_workspace   #282828 #cc241d #ebdbb2
     }
 }
 
@@ -168,7 +287,7 @@ bindsym \$mod+Return exec \$term
 bindsym \$mod+Shift+q kill
 bindsym \$mod+d exec \$menu
 bindsym \$mod+Shift+c reload
-# INSTANT EXIT (No Warning)
+# Instant Exit (No Nag)
 bindsym \$mod+Shift+e exec swaymsg exit
 
 # Apps
@@ -179,7 +298,7 @@ bindsym \$mod+Shift+Return exec thunar
 # Lock Screen (Gtklock)
 bindsym \$mod+Escape exec gtklock
 
-# Screenshots & Recording
+# Screenshots & Recording (No Print Key)
 bindsym \$mod+p exec grim ~/Pictures/shot_\$(date +%s).png
 bindsym \$mod+Shift+s exec grim -g "\$(slurp)" ~/Pictures/shot_\$(date +%s).png
 bindsym \$mod+Shift+r exec ~/.local/bin/record-screen.sh
@@ -189,6 +308,18 @@ bindsym \$mod+h focus left
 bindsym \$mod+j focus down
 bindsym \$mod+k focus up
 bindsym \$mod+l focus right
+
+# Moving windows
+bindsym \$mod+Shift+h move left
+bindsym \$mod+Shift+j move down
+bindsym \$mod+Shift+k move up
+bindsym \$mod+Shift+l move right
+
+# Layout
+bindsym \$mod+f fullscreen
+bindsym \$mod+s layout stacking
+bindsym \$mod+w layout tabbed
+bindsym \$mod+e layout toggle split
 
 # Workspaces
 bindsym \$mod+1 workspace 1
@@ -209,11 +340,11 @@ exec mako
 EOF
 
 # ==============================================================================
-# CHUNK 4: HELPER SCRIPTS
+# 5. FINAL STEPS
 # ==============================================================================
-echo ":: [4/4] Finalizing Services..."
+echo ":: [5/5] Finalizing..."
 
-# Recording Script (Simple)
+# Recording Script
 cat <<EOF > ~/.local/bin/record-screen.sh
 #!/bin/bash
 PIDFILE="/tmp/recording.pid"
@@ -230,12 +361,23 @@ fi
 EOF
 chmod +x ~/.local/bin/record-screen.sh
 
-# Services
+# Performance & Services
 sudo systemctl enable --now power-profiles-daemon.service
+sleep 2
+if command -v powerprofilesctl &> /dev/null; then
+    powerprofilesctl set performance || echo ":: Performance mode not supported (VM?)"
+fi
+
+# Disable Sleep
 sudo systemctl mask sleep.target suspend.target
+
+# Enable Audio
 systemctl --user enable --now wireplumber.service pipewire-pulse.service
+
+# Set Shell
 chsh -s /usr/bin/fish
 
 echo ":: ---------------------------------------------------"
-echo ":: FOUNDATION INSTALLED."
+echo ":: ULTIMATE SETUP COMPLETE."
+echo ":: Type 'sway' to launch."
 echo ":: ---------------------------------------------------"
