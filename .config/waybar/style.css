@@ -11,12 +11,6 @@ window#waybar {
     color: #ebdbb2;
 }
 
-/* --- Workspaces --- */
-#workspaces {
-    padding: 0;        /* Removed wrapper padding to tighten it up */
-    margin: 0 5px;     /* Small margin from the edge */
-}
-
 #workspaces button {
     padding: 0 4px;
     margin: 0px;
