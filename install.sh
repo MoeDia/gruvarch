@@ -52,6 +52,10 @@ if [ -f /usr/bin/zeditor ]; then
     sudo ln -sf /usr/bin/zeditor /usr/bin/zed
 fi
 
+# Set default editor as Zed
+echo 'export EDITOR="zed --wait"' >> ~/.bashrc
+echo 'export VISUAL="zed --wait"' >> ~/.bashrc
+
 echo ":: Applying GTK Theme (Gruvbox)..."
 # This forces the settings into the database immediately
 gsettings set org.gnome.desktop.interface gtk-theme "Gruvbox-Material-Dark"
