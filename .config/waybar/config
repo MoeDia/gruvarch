@@ -1,9 +1,6 @@
 {
-    "layer": "top",
-    "position": "top",
-    "margin-top": 10,
-    "margin-left": 10,
-    "margin-right": 10,
+    "layer": "bottom",
+    "position": "bottom",
     "height": 40,
     "spacing": 0,
 
@@ -37,7 +34,7 @@
 
     "tray": {
         "icon-size": 14,
-        "spacing": 10
+        "spacing": 3
     },
 
     "clock": {
