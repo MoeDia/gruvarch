@@ -25,7 +25,7 @@ fi
 PACKAGES="sway swaybg foot fuzzel mako xorg-xwayland waybar \
 pipewire pipewire-pulse wireplumber pamixer \
 wob wf-recorder btop imv \
-wl-clipboard cliphist grim slurp \
+wl-clipboard grim slurp \
 mesa vulkan-radeon libva-mesa-driver \
 thunar thunar-volman thunar-archive-plugin gvfs gvfs-mtp ntfs-3g udiskie unzip zip file-roller \
 tumbler ffmpegthumbnailer poppler-glib \
