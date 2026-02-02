@@ -12,7 +12,7 @@ Before running the script, ensure you are on a fresh Arch install and have an in
 Run:
 
 ```bash
-git clone https://github.com/yourusername/GruvArch.git
+git clone https://github.com/MoeDia/GruvArch
 cd GruvArch
 chmod +x install.sh
 ./install.sh
