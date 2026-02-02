@@ -9,13 +9,6 @@
 window#waybar {
     background-color: rgba(40, 40, 40, 0.85); /* Your Dark semi-transparent */
     color: #ebdbb2;
-    
-    /* 1. SQUARED (No Pill) */
-    border-radius: 0px;
-    
-    /* 2. BORDER (Gruvbox Yellow) */
-    border: 2px solid #d79921; 
-    /* If you want a border all around, change to: border: 2px solid #d79921; */
 }
 
 /* --- Workspaces --- */
@@ -25,9 +18,8 @@ window#waybar {
 }
 
 #workspaces button {
-    /* 3. REDUCED SPACING */
-    padding: 0 4px;    /* Reduced from 8px to 4px */
-    margin: 0px;       /* Forces buttons to touch */
+    padding: 0 4px;
+    margin: 0px;
     
     color: #a89984; 
     background: transparent;
