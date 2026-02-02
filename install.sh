@@ -140,37 +140,53 @@ fi' >> ~/.bash_profile
 
 echo ":: TTY configured (Big Font + Gruvbox Colors)."
 
-echo ":: Configuring Thunar to use Foot..."
+echo ":: Registering Foot as the system default terminal (Exo)..."
 
-# 1. Create the XFCE Helper directory if it doesn't exist
+# 1. Kill Thunar to ensure it reloads configs
+thunar -q 2>/dev/null
+
+# 2. Ensure the directory exists
 mkdir -p ~/.local/share/xfce4/helpers
 
-# 2. Create a desktop entry that tells Thunar how to launch Foot
-# We name it "custom-TerminalEmulator" so XFCE sees it as the user override
-cat <<EOF > ~/.local/share/xfce4/helpers/custom-TerminalEmulator.desktop
+# 3. Create the Helper File (The "Proper" Definition)
+# Crucial Additions:
+# - X-XFCE-Binaries: Tells exo what to look for to verify installed.
+# - TerminalEmulator Category: Explicitly sets the type.
+cat <<EOF > ~/.local/share/xfce4/helpers/foot.desktop
 [Desktop Entry]
 NoDisplay=true
 Version=1.0
 Encoding=UTF-8
 Type=X-XFCE-Helper
 X-XFCE-Category=TerminalEmulator
-X-XFCE-CommandsWithParameter=/usr/bin/foot -D "%s"
+X-XFCE-Binaries=foot;
 X-XFCE-Commands=/usr/bin/foot
-Name=foot
-Icon=foot
+X-XFCE-CommandsWithParameter=/usr/bin/foot -D "%s"
+Name=Foot
+Icon=terminal
 EOF
 
-# 3. Apply the setting permanently
-# We update helpers.rc to select this new custom helper
+# 4. Force the Configuration
+# We write directly to helpers.rc to bypass the need for the GUI settings manager
 mkdir -p ~/.config/xfce4
-if grep -q "TerminalEmulator=" ~/.config/xfce4/helpers.rc 2>/dev/null; then
-    # If the line exists, replace it
-    sed -i 's/TerminalEmulator=.*/TerminalEmulator=custom-TerminalEmulator/' ~/.config/xfce4/helpers.rc
+CONFIG_FILE="$HOME/.config/xfce4/helpers.rc"
+
+# Check if the file exists and has a TerminalEmulator line
+if grep -q "TerminalEmulator=" "$CONFIG_FILE" 2>/dev/null; then
+    # Update the existing line
+    sed -i 's/TerminalEmulator=.*/TerminalEmulator=foot/' "$CONFIG_FILE"
 else
-    # If the file or line doesn't exist, append it
-    echo "TerminalEmulator=custom-TerminalEmulator" >> ~/.config/xfce4/helpers.rc
+    # Create the file or append the line
+    echo "TerminalEmulator=foot" >> "$CONFIG_FILE"
 fi
 
-echo ":: Thunar default terminal set to Foot."
+# 5. Optional: Map 'gnome-terminal' to foot just in case something is hardcoded
+# This creates a fake 'gnome-terminal' command that actually runs foot
+if ! command -v gnome-terminal &> /dev/null; then
+    echo ":: Creating symlink for legacy app compatibility..."
+    sudo ln -sf /usr/bin/foot /usr/local/bin/gnome-terminal
+fi
+
+echo ":: Foot registered. Thunar restarted."
 
 echo ":: Install Complete."
