@@ -125,7 +125,7 @@ exec wl-paste --watch cliphist store
 exec mako
 
 # 5. Auto-Mounting
-exec udiskie --tray
+exec udiskie
 
 # 6. Bar
 exec waybar
