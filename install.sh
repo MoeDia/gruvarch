@@ -1,5 +1,23 @@
 #!/bin/bash
 
+mkdir -p ~/.config
+mkdir -p ~/.local/bin
+mkdir -p ~/Pictures/Wallpapers
+
+echo ":: Copying Dotfiles..."
+# Copy the contents of your repo's .config to the system .config
+cp -r .config/* ~/.config/
+
+# Copy the contents of your repo's .local to the system .local
+cp -r .local/* ~/.local/
+
+chmod +x ~/.local/bin/*
+
+# Make Waybar scripts executable
+if [ -d ~/.config/waybar/scripts ]; then
+    chmod +x ~/.config/waybar/scripts/*
+fi
+
 # 1. OFFICIAL PACKAGES
 PACKAGES="sway swaybg foot fuzzel mako xorg-xwayland waybar \
 pipewire pipewire-pulse wireplumber pamixer \
@@ -29,7 +47,15 @@ if [ -f /usr/bin/zeditor ]; then
     sudo ln -sf /usr/bin/zeditor /usr/bin/zed
 fi
 
+echo ":: Applying GTK Theme (Gruvbox)..."
+# This forces the settings into the database immediately
+gsettings set org.gnome.desktop.interface gtk-theme "Gruvbox-Material-Dark"
+gsettings set org.gnome.desktop.interface icon-theme "Papirus-Dark"
+gsettings set org.gnome.desktop.interface font-name "JetBrainsMono Nerd Font 10"
+gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
+
 sudo systemctl enable --now power-profiles-daemon.service
 sudo chsh -s /bin/bash $(whoami)
+
 
 echo ":: Install Complete."
