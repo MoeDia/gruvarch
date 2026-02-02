@@ -140,4 +140,37 @@ fi' >> ~/.bash_profile
 
 echo ":: TTY configured (Big Font + Gruvbox Colors)."
 
+echo ":: Configuring Thunar to use Foot..."
+
+# 1. Create the XFCE Helper directory if it doesn't exist
+mkdir -p ~/.local/share/xfce4/helpers
+
+# 2. Create a desktop entry that tells Thunar how to launch Foot
+# We name it "custom-TerminalEmulator" so XFCE sees it as the user override
+cat <<EOF > ~/.local/share/xfce4/helpers/custom-TerminalEmulator.desktop
+[Desktop Entry]
+NoDisplay=true
+Version=1.0
+Encoding=UTF-8
+Type=X-XFCE-Helper
+X-XFCE-Category=TerminalEmulator
+X-XFCE-CommandsWithParameter=/usr/bin/foot -D "%s"
+X-XFCE-Commands=/usr/bin/foot
+Name=foot
+Icon=foot
+EOF
+
+# 3. Apply the setting permanently
+# We update helpers.rc to select this new custom helper
+mkdir -p ~/.config/xfce4
+if grep -q "TerminalEmulator=" ~/.config/xfce4/helpers.rc 2>/dev/null; then
+    # If the line exists, replace it
+    sed -i 's/TerminalEmulator=.*/TerminalEmulator=custom-TerminalEmulator/' ~/.config/xfce4/helpers.rc
+else
+    # If the file or line doesn't exist, append it
+    echo "TerminalEmulator=custom-TerminalEmulator" >> ~/.config/xfce4/helpers.rc
+fi
+
+echo ":: Thunar default terminal set to Foot."
+
 echo ":: Install Complete."
