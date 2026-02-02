@@ -16,11 +16,6 @@ cp -r .local/* ~/.local/
 
 chmod +x ~/.local/bin/*
 
-# Make Waybar scripts executable
-if [ -d ~/.config/waybar/scripts ]; then
-    chmod +x ~/.config/waybar/scripts/*
-fi
-
 # 1. OFFICIAL PACKAGES
 PACKAGES="sway swaybg foot fuzzel mako xorg-xwayland waybar \
 pipewire pipewire-pulse wireplumber pamixer \
