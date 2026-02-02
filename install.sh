@@ -40,7 +40,7 @@ if ! command -v yay &> /dev/null; then
     git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si --noconfirm && cd .. && rm -rf yay-bin
 fi
 
-yay -S --noconfirm librewolf-bin fastfetch gtklock gruvbox-material-gtk-theme-git spotify
+yay -S --noconfirm librewolf-bin fastfetch gtklock gruvbox-material-gtk-theme-git spotify gruvbox-plus-icon-theme-git
 
 # 3. FIXES
 if [ -f /usr/bin/zeditor ]; then
