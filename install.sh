@@ -34,7 +34,7 @@ polkit-gnome power-profiles-daemon python-gobject glib2 libnotify libappindicato
 xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk \
 xcursor-vanilla-dmz ttf-jetbrains-mono-nerd ttf-font-awesome inter-font noto-fonts \
 fish eza fzf starship zed mpv qt5-wayland qt6-wayland qbittorrent papirus-icon-theme \
-gsettings-desktop-schemas gnome-themes-extra nwg-look imagemagick \
+gsettings-desktop-schemas gnome-themes-extra nwg-look imagemagick terminus-font \
 pyside6 python-certifi python-pem python-pyopenssl python-pyqt5 python-service-identity shiboken6 syncplay"
 
 sudo pacman -S --needed --noconfirm $PACKAGES
@@ -114,5 +114,21 @@ fi
 # Cleanup
 rm /tmp/limine_theme_header.conf
 
+echo ":: Configuring TTY (Font & Colors)..."
+
+# 1. Configure vconsole.conf for BIG text
+# 'ter-132n' is Terminus, 32px high (Very readable on 1080p/4k)
+echo "FONT=ter-132n" | sudo tee /etc/vconsole.conf
+
+# 2. Set Text Color to Gruvbox Cream on Login
+# We add a command to your shell profile that changes the text color
+# immediately when you log into the TTY.
+echo 'if [ "$TERM" = "linux" ]; then
+    echo -en "\e]P0282828" # Black -> Gruvbox Dark
+    echo -en "\e]P7ebdbb2" # White -> Gruvbox Cream
+    clear # Apply changes
+fi' >> ~/.bash_profile
+
+echo ":: TTY configured (Big Font + Gruvbox Colors)."
 
 echo ":: Install Complete."
