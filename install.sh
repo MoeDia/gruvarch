@@ -34,7 +34,8 @@ polkit-gnome power-profiles-daemon python-gobject glib2 libnotify libappindicato
 xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk \
 xcursor-vanilla-dmz ttf-jetbrains-mono-nerd ttf-font-awesome inter-font noto-fonts \
 fish eza fzf starship zed mpv qt5-wayland qt6-wayland qbittorrent papirus-icon-theme \
-gsettings-desktop-schemas gnome-themes-extra nwg-look imagemagick"
+gsettings-desktop-schemas gnome-themes-extra nwg-look imagemagick \
+pyside6 python-certifi python-pem python-pyopenssl python-pyqt5 python-service-identity shiboken6 syncplay"
 
 sudo pacman -S --needed --noconfirm $PACKAGES
 
@@ -44,7 +45,7 @@ if ! command -v yay &> /dev/null; then
     git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si --noconfirm && cd .. && rm -rf yay-bin
 fi
 
-yay -S --noconfirm librewolf-bin fastfetch gtklock gruvbox-material-gtk-theme-git
+yay -S --noconfirm librewolf-bin fastfetch gtklock gruvbox-material-gtk-theme-git spotify
 
 # 3. FIXES
 if [ -f /usr/bin/zeditor ]; then
