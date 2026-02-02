@@ -34,7 +34,7 @@ polkit-gnome power-profiles-daemon python-gobject glib2 libnotify libappindicato
 xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk \
 xcursor-vanilla-dmz ttf-jetbrains-mono-nerd ttf-font-awesome inter-font noto-fonts \
 fish eza fzf starship zed mpv qt5-wayland qt6-wayland qbittorrent papirus-icon-theme \
-gsettings-desktop-schemas gnome-themes-extra nwg-look"
+gsettings-desktop-schemas gnome-themes-extra nwg-look imagemagick"
 
 sudo pacman -S --needed --noconfirm $PACKAGES
 
