@@ -22,7 +22,7 @@ pipewire pipewire-pulse wireplumber pamixer \
 wob wf-recorder btop imv \
 wl-clipboard grim slurp \
 mesa vulkan-radeon libva-mesa-driver \
-thunar thunar-volman thunar-archive-plugin gvfs gvfs-mtp ntfs-3g udiskie unzip zip file-roller \
+thunar exo thunar-volman thunar-archive-plugin gvfs gvfs-mtp ntfs-3g udiskie unzip zip file-roller \
 tumbler ffmpegthumbnailer poppler-glib \
 ffmpeg gstreamer gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav \
 polkit-gnome power-profiles-daemon python-gobject glib2 libnotify libappindicator-gtk3 \
