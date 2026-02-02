@@ -14,23 +14,19 @@ Run:
 ```bash
 git clone https://github.com/yourusername/GruvArch.git
 cd GruvArch
-chmod +x setup.sh
-./setup.sh
+chmod +x install.sh
+./install.sh
 ```
 
-Bash
-
-chmod +x setup.sh
-./setup.sh
 
 ⌨️ Quick Controls
 Keybind	Action
-Mod + Enter	Open Foot Terminal
-Mod + D	App Launcher
-Mod + Shift + E	Exit Sway
+Mod + Enter	= Open Foot Terminal
+Mod + D = App Launcher
+Mod + Shift + E	= Exit Sway
+Mod + Shift + Enter = Thunar (File Manager)
 
 📦 Core Dependencies
-
 The script will automatically install these, but here's what’s under the hood:
 
     Window Manager: Sway
