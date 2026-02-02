@@ -4,6 +4,9 @@ mkdir -p ~/.config
 mkdir -p ~/.local/bin
 mkdir -p ~/Pictures/Wallpapers
 
+# Copy wallpaper
+cp classroom.jpg ~/Pictures/Wallpapers/
+
 echo ":: Copying Dotfiles..."
 # Copy the contents of your repo's .config to the system .config
 cp -r .config/* ~/.config/
