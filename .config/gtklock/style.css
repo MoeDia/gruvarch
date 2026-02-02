@@ -1,6 +1,6 @@
 window {
     /* Use your wallpaper as the background */
-    background-image: url("~/Pictures/Wallpapers/classroom.jpg");
+    background-image: url("/home/dia/Pictures/Wallpapers/classroom.jpg");
     background-size: cover;
     background-position: center;
 }
