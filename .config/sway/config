@@ -108,6 +108,15 @@ bindsym $mod+Shift+3 move container to workspace 3
 bindsym $mod+Shift+4 move container to workspace 4
 bindsym $mod+Shift+5 move container to workspace 5
 
+# 1. Force MPV to tile (and disable sticky floating)
+for_window [app_id="mpv"] floating disable
+
+# 2. Force File Pickers (Open/Save dialogs) to tile
+# Note: We target multiple common titles and roles to catch them all.
+for_window [window_role="GtkFileChooserDialog"] floating disable
+for_window [title="(Open|Save) (File|Folder|As)"] floating disable
+for_window [title="File Upload"] floating disable
+
 # ==============================================================================
 # 5. AUTOSTART (Use 'exec' to prevent duplicates)
 # ==============================================================================
