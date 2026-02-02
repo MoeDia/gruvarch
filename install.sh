@@ -30,7 +30,7 @@ ffmpeg gstreamer gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav \
 polkit-gnome power-profiles-daemon python-gobject glib2 libnotify libappindicator-gtk3 \
 xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk \
 xcursor-vanilla-dmz ttf-jetbrains-mono-nerd ttf-font-awesome inter-font noto-fonts \
-fish eza fzf starship zed mpv qt5-wayland qt6-wayland qbittorrent papirus-icon-theme gsettings-desktop-schemas gnome-themes-extra"
+fish eza fzf starship zed mpv qt5-wayland qt6-wayland qbittorrent papirus-icon-theme gsettings-desktop-schemas gnome-themes-extra gtk-engine-murrine nwg-look"
 
 sudo pacman -S --needed --noconfirm $PACKAGES
 
