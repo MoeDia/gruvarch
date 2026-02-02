@@ -18,6 +18,9 @@
     }
   },
   "modules": [
+    { "type": "break" },   // Adds 1 empty line
+    { "type": "break" },   // Adds 2nd empty line (Adjust as needed)
+    
     {
       "type": "kernel",
       "key": "Kernel",
