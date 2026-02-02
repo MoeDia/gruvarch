@@ -20,11 +20,14 @@ chmod +x install.sh
 
 
 ⌨️ Quick Controls
-Keybind	Action
+```bash
+Keybinds
+
 Mod + Enter	= Open Foot Terminal
 Mod + D = App Launcher
 Mod + Shift + E	= Exit Sway
 Mod + Shift + Enter = Thunar (File Manager)
+```
 
 📦 Core Dependencies
 The script will automatically install these, but here's what’s under the hood:
