@@ -99,7 +99,7 @@ EOF
 
 # 3. Prepend the header to the existing config
 # We concatenate the HEADER + EXISTING CONFIG -> NEW CONFIG
-if [ -f /boot/limine.conf ]; then
+if [ -f /boot/limeine/limine.conf ]; then
     # Create a temporary combined file
     cat /tmp/limine_theme_header.conf /boot/limine.conf > /tmp/limine_full.conf
     
