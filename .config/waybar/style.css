@@ -14,7 +14,7 @@ window#waybar {
     border-radius: 0px;
     
     /* 2. BORDER (Gruvbox Yellow) */
-    border-bottom: 2px solid #d79921; 
+    border: 2px solid #d79921; 
     /* If you want a border all around, change to: border: 2px solid #d79921; */
 }
 
