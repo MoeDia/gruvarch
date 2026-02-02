@@ -7,43 +7,53 @@
 }
 
 window#waybar {
-    background-color: rgba(40, 40, 40, 0.85); /* Dark semi-transparent */
+    background-color: rgba(40, 40, 40, 0.85); /* Your Dark semi-transparent */
     color: #ebdbb2;
-    border-radius: 50px; /* The "Pill" shape */
+    
+    /* 1. SQUARED (No Pill) */
+    border-radius: 0px;
+    
+    /* 2. BORDER (Gruvbox Yellow) */
+    border-bottom: 2px solid #d79921; 
+    /* If you want a border all around, change to: border: 2px solid #d79921; */
 }
 
-/* --- Workspaces (Omarchy Style) --- */
+/* --- Workspaces --- */
 #workspaces {
-    padding: 0 15px;
+    padding: 0;        /* Removed wrapper padding to tighten it up */
+    margin: 0 5px;     /* Small margin from the edge */
 }
 
 #workspaces button {
-    padding: 0 8px;
-    color: #a89984; /* Dimmed */
+    /* 3. REDUCED SPACING */
+    padding: 0 4px;    /* Reduced from 8px to 4px */
+    margin: 0px;       /* Forces buttons to touch */
+    
+    color: #a89984; 
     background: transparent;
     font-weight: bold;
 }
 
 #workspaces button.focused {
-    color: #ccac56; /* Gold/Yellow active */
+    color: #ccac56; 
+    /* Optional: Add a subtle indicator for the active workspace */
+    border-bottom: 2px solid #ccac56; 
 }
 
 #workspaces button.urgent {
-    color: #cc241d; /* Red */
+    color: #cc241d; 
 }
 
 #workspaces button:hover {
-    color: #ebdbb2; /* White/Cream on hover */
+    color: #ebdbb2; 
 }
 
-/* --- Center Media --- */
 #custom-media {
     color: #ccac56;
     font-weight: bold;
     padding: 0 15px;
 }
 
-/* --- Right Clock --- */
 #clock {
     color: #ebdbb2;
     padding: 0 20px;
