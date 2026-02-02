@@ -118,7 +118,7 @@ EOF
 
 # 5. Prepend safely to the detected file
 cat /tmp/limine_theme_header.conf "$LIMINE_CONF" > /tmp/limine_full.conf
-sudo mv /tmp/limine_full.conf "$LIMINE_CONF"
+sudo cp /tmp/limine_full.conf "$LIMINE_CONF"
 echo ":: Limine config updated successfully at $LIMINE_CONF."
 
 # Cleanup
