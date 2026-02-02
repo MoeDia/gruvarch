@@ -23,13 +23,18 @@
         }
     },
 
-    "custom/media": {
-        "exec": "~/.config/waybar/scripts/now-playing.sh",
-        "return-type": "text",
-        "format": "{}",
-        "interval": 1,
-        "on-click": "playerctl play-pause",
-        "max-length": 50
+    "mpris": {
+        "format": "{player_icon} {title}",
+        "format-paused": "{status_icon} <i>{title}</i>",
+        "max-length": 40,      // <--- SOLVES "TOO LONG"
+        "player-icons": {
+            "default": "▶",
+            "spotify": "",
+            "firefox": ""
+        },
+        "status-icons": {
+            "paused": "⏸"
+        },
     },
 
     "tray": {
